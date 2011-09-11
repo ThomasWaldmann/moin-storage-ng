@@ -34,10 +34,10 @@ class BackendTestBase(object):
     def test_store_get_del(self):
         meta = dict(foo='bar')
         data = 'baz'
-        metaid = self.be.store_revision(meta, data)
+        metaid = self.be.store_revision(meta, StringIO(data))
         m, d = self.be.get_revision(metaid)
         assert m == meta
-        assert d == data
+        assert d.read() == data
         self.be.del_revision(metaid)
         with pytest.raises(KeyError):
             self.be.get_revision(metaid)
@@ -50,7 +50,7 @@ class BackendTestBase(object):
               ]
         expected_result = set()
         for m, d in mds:
-            k = self.be.store_revision(m, d)
+            k = self.be.store_revision(m, StringIO(d))
             # note: store_revision injects dataid and metaid into m
             m = tuple(sorted(m.items()))
             expected_result.add((k, m, d))
@@ -58,6 +58,6 @@ class BackendTestBase(object):
         for k in self.be:
             m, d = self.be.get_revision(k)
             m = tuple(sorted(m.items()))
-            result.add((k, m, d))
+            result.add((k, m, d.read()))
         assert result == expected_result
 

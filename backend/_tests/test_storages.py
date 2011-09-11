@@ -16,28 +16,30 @@ import pytest
 from backend.storages import MutableBackend
 from backend._tests import BackendTestBase
 
-from storage.memory import Storage as MemoryStorage
+from storage.memory import BytesStorage as MemoryBytesStorage
+from storage.memory import FileStorage as MemoryFileStorage
 
 class TestMemoryBackend(BackendTestBase):
     def setup_method(self, method):
-        meta_store = MemoryStorage()
-        data_store = MemoryStorage()
+        meta_store = MemoryBytesStorage()
+        data_store = MemoryFileStorage()
         self.be = MutableBackend(meta_store, data_store)
         self.be.create()
         self.be.open()
 
 import os, tempfile
 
-from storage.fs import Storage as FSStorage
+from storage.fs import BytesStorage as FSBytesStorage
+from storage.fs import FileStorage as FSFileStorage
 
 class TestFSBackend(BackendTestBase):
     def setup_method(self, method):
         meta_path = tempfile.mkdtemp()
         os.rmdir(meta_path)
-        meta_store = FSStorage(meta_path)
+        meta_store = FSBytesStorage(meta_path)
         data_path = tempfile.mkdtemp()
         os.rmdir(data_path)
-        data_store = FSStorage(data_path)
+        data_store = FSFileStorage(data_path)
         self.be = MutableBackend(meta_store, data_store)
         self.be.create()
         self.be.open()

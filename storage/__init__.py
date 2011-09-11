@@ -13,6 +13,7 @@ import io
 from abc import abstractmethod
 from collections import Mapping, MutableMapping
 
+
 class StorageBase(Mapping):
     """
     A read-only storage backend is a simple key/value store.
@@ -43,19 +44,26 @@ class StorageBase(Mapping):
         return len([key for key in self])
 
     @abstractmethod
-    def get_file(self, key):
+    def __getitem__(self, key):
         """
-        return a filelike for key if exists else raise KeyError
+        return data stored for key
         """
-    
+
+
+class BytesStorageBase(StorageBase):
     @abstractmethod
-    def get_bytes(self, key):
+    def __getitem__(self, key):
         """
         return bytestring for key if exists else raise KeyError
         """
 
+
+class FileStorageBase(StorageBase):
+    @abstractmethod
     def __getitem__(self, key):
-        return self.get_bytes(key)
+        """
+        return a filelike for key if exists else raise KeyError
+        """
 
 
 class MutableStorageBase(StorageBase, MutableMapping):
@@ -73,31 +81,30 @@ class MutableStorageBase(StorageBase, MutableMapping):
         """
 
     @abstractmethod
-    def set_file(self, key, stream):
-        """
-        store a filelike for key
-        """
-    
-    @abstractmethod
-    def set_bytes(self, key):
-        """
-        store a bytestring for key
-        """
-
     def __setitem__(self, key, value):
         """
         store value under key
         """
-        if isinstance(value, io.IOBase):
-            self.set_file(key, value)
-        elif isinstance(value, bytes):
-            self.set_bytes(key, value)
-        else:
-            raise TypeError("%r is not bytes or filelike" % (value.__class__, ))
 
     @abstractmethod
     def __delitem__(self, key):
         """
         delete the key, dereference the related value in the storage
+        """
+
+
+class BytesMutableStorageBase(MutableStorageBase):
+    @abstractmethod
+    def __setitem__(self, key):
+        """
+        store a bytestring for key
+        """
+
+
+class FileMutableStorageBase(MutableStorageBase):
+    @abstractmethod
+    def __setitem__(self, key):
+        """
+        store a filelike for key
         """
 

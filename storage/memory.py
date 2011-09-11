@@ -10,9 +10,9 @@ from __future__ import absolute_import, division
 
 from StringIO import StringIO
 
-from storage import MutableStorageBase
+from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
 
-class Storage(MutableStorageBase):
+class _Storage(MutableStorageBase):
     """
     A simple dict-based in-memory storage. No persistence!
     """
@@ -26,22 +26,25 @@ class Storage(MutableStorageBase):
         for key in self._st:
             yield key
 
-    def get_bytes(self, key):
+    def __delitem__(self, key):
+        del self._st[key]
+
+
+class BytesStorage(_Storage, BytesMutableStorageBase):
+    def __getitem__(self, key):
         return self._st[key]
 
-    def get_file(self, key):
-        return StringIO(self._st[key])
-
-    def set_bytes(self, key, value):
+    def __setitem__(self, key, value):
         self._st[key] = value
 
-    def set_file(self, key, stream):
+
+class FileStorage(_Storage, FileMutableStorageBase):
+    def __getitem__(self, key):
+        return StringIO(self._st[key])
+
+    def __setitem__(self, key, stream):
         try:
             value = stream.read()
             self._st[key] = value
         finally:
             stream.close()
-
-    def __delitem__(self, key):
-        del self._st[key]
-

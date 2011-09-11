@@ -10,15 +10,23 @@ from __future__ import absolute_import, division
 
 import os, tempfile
 
-from storage.fs import Storage
-from storage._tests import StorageTestBase
+from storage.fs import BytesStorage, FileStorage
+from storage._tests import BytesStorageTestBase, FileStorageTestBase
 
-
-class TestStorage(StorageTestBase):
+class TestBytesStorage(BytesStorageTestBase):
     def setup_method(self, method):
         path = tempfile.mkdtemp()
         os.rmdir(path)
-        self.st = Storage(path)
+        self.st = BytesStorage(path)
         self.st.create()
         self.st.open()
+
+class TestFileStorage(FileStorageTestBase):
+    def setup_method(self, method):
+        path = tempfile.mkdtemp()
+        os.rmdir(path)
+        self.st = FileStorage(path)
+        self.st.create()
+        self.st.open()
+
 

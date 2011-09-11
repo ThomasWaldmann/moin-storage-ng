@@ -10,10 +10,10 @@ from __future__ import absolute_import, division
 
 import os, errno, shutil
 
-from storage import MutableStorageBase
+from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
 
 
-class Storage(MutableStorageBase):
+class _Storage(MutableStorageBase):
     """
     A simple filesystem-based storage.
 
@@ -28,7 +28,7 @@ class Storage(MutableStorageBase):
     def destroy(self):
         shutil.rmtree(self.path)
 
-    def mkpath(self, key):
+    def _mkpath(self, key):
         # XXX unsafe keys?
         return os.path.join(self.path, key)
 
@@ -36,28 +36,37 @@ class Storage(MutableStorageBase):
         for key in os.listdir(self.path):
             yield key
 
-    def get_bytes(self, key):
-        f = self.get_file(key)
-        try:
-            return f.read() # better use get_file() and read smaller blocks for big files
-        finally:
-            f.close()
+    def __delitem__(self, key):
+        os.remove(self._mkpath(key))
 
-    def get_file(self, key):
+
+class BytesStorage(_Storage, BytesMutableStorageBase):
+    def __getitem__(self, key):
         try:
-            return open(self.mkpath(key), 'rb')
+            with open(self._mkpath(key), 'rb') as f:
+                return f.read() # better use get_file() and read smaller blocks for big files
         except IOError as e:
             if e.errno == errno.ENOENT:
                 raise KeyError(key)
             raise
 
-    def set_bytes(self, key, value):
-        with open(self.mkpath(key), "wb") as f:
+    def __setitem__(self, key, value):
+        with open(self._mkpath(key), "wb") as f:
             f.write(value)
 
-    def set_file(self, key, stream):
+
+class FileStorage(_Storage, FileMutableStorageBase):
+    def __getitem__(self, key):
         try:
-            with open(self.mkpath(key), "wb") as f:
+            return open(self._mkpath(key), 'rb')
+        except IOError as e:
+            if e.errno == errno.ENOENT:
+                raise KeyError(key)
+            raise
+
+    def __setitem__(self, key, stream):
+        try:
+            with open(self._mkpath(key), "wb") as f:
                 blocksize = 64 * 1024
                 data = stream.read(blocksize)
                 while data:
@@ -65,7 +74,4 @@ class Storage(MutableStorageBase):
                     data = stream.read(blocksize)
         finally:
             stream.close()
-
-    def __delitem__(self, key):
-        os.remove(self.mkpath(key))
 

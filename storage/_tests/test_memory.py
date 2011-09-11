@@ -8,13 +8,20 @@ MoinMoin - memory storage tests
 
 from __future__ import absolute_import, division
 
-from storage.memory import Storage
-from storage._tests import StorageTestBase
+from storage.memory import BytesStorage, FileStorage
+from storage._tests import BytesStorageTestBase, FileStorageTestBase
 
 
-class TestStorage(StorageTestBase):
+class TestBytesStorage(BytesStorageTestBase):
     def setup_method(self, method):
-        self.st = Storage()
+        self.st = BytesStorage()
         self.st.create()
         self.st.open()
+
+class TestFileStorage(FileStorageTestBase):
+    def setup_method(self, method):
+        self.st = FileStorage()
+        self.st.create()
+        self.st.open()
+
 

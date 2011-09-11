@@ -13,7 +13,7 @@ import pytest
 from StringIO import StringIO
 
 
-class StorageTestBase(object):
+class _StorageTestBase(object):
     def setup_method(self, method):
         """
         self.st needs to be an created/opened storage
@@ -31,6 +31,34 @@ class StorageTestBase(object):
         with pytest.raises(KeyError):
             self.st['doesnotexist']
 
+
+class FileStorageTestBase(_StorageTestBase):
+    def test_setitem_getitem_delitem(self):
+        k, v = 'key', 'value'
+        self.st[k] = StringIO(v)
+        assert v == self.st[k].read()
+        del self.st[k]
+        with pytest.raises(KeyError):
+            self.st[k]
+
+    def test_iter(self):
+        kvs = set([('1', 'one'), ('2', 'two'), ('3', 'three'), ])
+        for k, v in kvs:
+            v = StringIO(v)
+            self.st[k] = v
+        result = set()
+        for k in self.st:
+            result.add((k, self.st[k].read()))
+        assert result == kvs
+
+    def test_len(self):
+        assert len(self.st) == 0
+        self.st['foo'] = StringIO('bar')
+        assert len(self.st) == 1
+        del self.st['foo']
+        assert len(self.st) == 0
+
+class BytesStorageTestBase(_StorageTestBase):
     def test_setitem_getitem_delitem(self):
         k, v = 'key', 'value'
         self.st[k] = v
@@ -54,14 +82,4 @@ class StorageTestBase(object):
         assert len(self.st) == 1
         del self.st['foo']
         assert len(self.st) == 0
-
-    def test_setfile_getfile(self):
-        kvs = set([('1', 'f-one'), ('2', 'f-two'), ('3', 'f-three'), ])
-        for k, v in kvs:
-            v = StringIO(v)
-            self.st.set_file(k, v)
-        result = set()
-        for k in self.st:
-            result.add((k, self.st.get_file(k).read()))
-        assert result == kvs
 

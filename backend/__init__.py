@@ -4,6 +4,13 @@
 
 """
 MoinMoin - backend using 2 storages
+
+Usually, this will be a ByteStorage for meta and a FileStorage for data.
+
+But, you could also use other combinations, you just need to be prepared
+for the revision data datatype it returns (that is exactly what the data_store
+returns) and also feed it with the correct revision data datatype (which
+is what the data_store accepts).
 """
 
 
@@ -51,14 +58,12 @@ class Backend(object):
 
     def get_data(self, dataid):
         return self.data_store[dataid]
-    # TODO above usually returns bytes, but we may prefer a file rather
 
     def get_revision(self, metaid):
         meta = self.get_meta(metaid)
         dataid = meta['dataid']
         data = self.get_data(dataid)
         return meta, data
-    # TODO above usually returns bytes for the data, but we may prefer a file rather
 
 
 class MutableBackend(Backend):
