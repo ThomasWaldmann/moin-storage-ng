@@ -45,7 +45,7 @@ class Backend(BackendBase):
             for filename in filenames:
                 yield self._mkkey(os.path.join(dirpath, filename))
 
-    def get_meta(self, fn):
+    def _get_meta(self, fn):
         path = self._mkpath(fn)
         try:
             st = os.stat(path)
@@ -101,7 +101,7 @@ class Backend(BackendBase):
             content = unicode(err)
         return content
 
-    def get_data(self, fn):
+    def _get_data(self, fn):
         path = self._mkpath(fn)
         try:
             st = os.stat(path)
@@ -118,7 +118,7 @@ class Backend(BackendBase):
             raise
 
     def get_revision(self, fn):
-        meta = self.get_meta(fn)
-        data = self.get_data(fn)
+        meta = self._get_meta(fn)
+        data = self._get_data(fn)
         return meta, data
 

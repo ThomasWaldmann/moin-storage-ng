@@ -54,14 +54,14 @@ class Backend(BackendBase):
         meta = json.loads(text)
         return meta
 
-    def get_meta(self, metaid):
+    def _get_meta(self, metaid):
         meta = self.meta_store[metaid]
         # XXX Idea: we could check the type we get from the store:
         # if it is a str/bytes, just use it "as is",
         # if it is a file, read and close it (so we have a str/bytes).
         return self._deserialize(meta)
 
-    def get_data(self, dataid):
+    def _get_data(self, dataid):
         data = self.data_store[dataid]
         # XXX Idea: we could check the type we get from the store:
         # if it is a file, just return it "as is",
@@ -70,9 +70,9 @@ class Backend(BackendBase):
         return data
 
     def get_revision(self, metaid):
-        meta = self.get_meta(metaid)
+        meta = self._get_meta(metaid)
         dataid = meta['dataid']
-        data = self.get_data(dataid)
+        data = self._get_data(dataid)
         return meta, data
 
 
@@ -125,7 +125,7 @@ class MutableBackend(Backend, MutableBackendBase):
         del self.data_store[dataid]
 
     def del_revision(self, metaid):
-        meta = self.get_meta(metaid)
+        meta = self._get_meta(metaid)
         dataid = meta['dataid']
         self.del_meta(metaid)
         self.del_data(dataid)
