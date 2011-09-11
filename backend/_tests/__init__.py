@@ -21,7 +21,7 @@ class BackendTestBase(object):
 
     def teardown_method(self, method):
         """
-        close and destroy self.be
+        close self.be
         """
         self.be.close()
 
