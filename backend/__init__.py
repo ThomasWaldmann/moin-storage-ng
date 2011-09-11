@@ -54,10 +54,19 @@ class Backend(object):
         return meta
 
     def get_meta(self, metaid):
-        return self._deserialize(self.meta_store[metaid])
+        meta = self.meta_store[metaid]
+        # XXX Idea: we could check the type we get from the store:
+        # if it is a str/bytes, just use it "as is",
+        # if it is a file, read and close it (so we have a str/bytes).
+        return self._deserialize(meta)
 
     def get_data(self, dataid):
-        return self.data_store[dataid]
+        data = self.data_store[dataid]
+        # XXX Idea: we could check the type we get from the store:
+        # if it is a file, just return it "as is",
+        # if it is a str/bytes, wrap it into StringIO (so we always return
+        # a file-like object).
+        return data
 
     def get_revision(self, metaid):
         meta = self.get_meta(metaid)
@@ -86,11 +95,18 @@ class MutableBackend(Backend):
     def store_meta(self, meta):
         metaid = make_uuid()
         meta['metaid'] = metaid
-        self.meta_store[metaid] = self._serialize(meta)
+        meta = self._serialize(meta)
+        # XXX Idea: we could check the type the store wants from us:
+        # if it is a str/bytes (BytesStorage), just use meta "as is",
+        # if it is a file (FileStorage), wrap it into StringIO and give that to the store.
+        self.meta_store[metaid] = meta
         return metaid
 
     def store_data(self, data):
         dataid = make_uuid()
+        # XXX Idea: we could check the type the store wants from us:
+        # if it is a str/bytes (BytesStorage), just use meta "as is",
+        # if it is a file (FileStorage), wrap it into StringIO and give that to the store.
         self.data_store[dataid] = data
         return dataid
 
