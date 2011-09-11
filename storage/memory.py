@@ -36,9 +36,11 @@ class Storage(MutableStorageBase):
         self._st[key] = value
 
     def set_file(self, key, stream):
-        value = stream.read()
-        stream.close()
-        self._st[key] = value
+        try:
+            value = stream.read()
+            self._st[key] = value
+        finally:
+            stream.close()
 
     def __delitem__(self, key):
         del self._st[key]
