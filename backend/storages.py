@@ -22,6 +22,7 @@ make_uuid = lambda: unicode(uuid4().hex)
 UUID_LEN = len(make_uuid())
 
 from backend import BackendBase, MutableBackendBase
+from backend._util import TrackingFileWrapper
 
 try:
     import json
@@ -112,8 +113,12 @@ class MutableBackend(Backend, MutableBackendBase):
         return dataid
 
     def store_revision(self, meta, data):
-        dataid = self.store_data(data)
+        HASH_METHOD = 'sha1'
+        tfw = TrackingFileWrapper(data, hash_method=HASH_METHOD)
+        dataid = self.store_data(tfw)
         meta['dataid'] = dataid
+        meta['size'] = tfw.size
+        meta[HASH_METHOD] = tfw.hash.hexdigest()
         # if something goes wrong below, the data shall be purged by a garbage collection
         metaid = self.store_meta(meta)
         return metaid

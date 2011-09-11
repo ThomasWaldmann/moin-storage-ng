@@ -71,7 +71,7 @@ class MutableBackendTestBase(BackendTestBase):
         expected_result = set()
         for m, d in mds:
             k = self.be.store_revision(m, StringIO(d))
-            # note: store_revision injects dataid and metaid into m
+            # note: store_revision injects some new keys (like dataid, metaid, size, hash key) into m
             m = tuple(sorted(m.items()))
             expected_result.add((k, m, d))
         result = set()
