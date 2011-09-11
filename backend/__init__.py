@@ -1,0 +1,109 @@
+# Copyright: 2011 MoinMoin:RonnyPfannschmidt
+# Copyright: 2011 MoinMoin:ThomasWaldmann
+# License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
+
+"""
+MoinMoin - backend using 2 storages
+"""
+
+
+from __future__ import absolute_import, division
+
+from uuid import uuid4
+
+make_uuid = lambda: unicode(uuid4().hex)
+UUID_LEN = len(make_uuid())
+
+
+try:
+    import json
+except ImportError:
+    import simplejson as json
+
+
+class Backend(object):
+    """
+    ties together a store for metadata and a store for data, readonly
+    """
+    def __init__(self, meta_store, data_store):
+        self.meta_store = meta_store
+        self.data_store = data_store
+
+    def open(self):
+        self.meta_store.open()
+        self.data_store.open()
+
+    def close(self):
+        self.meta_store.close()
+        self.data_store.close()
+
+    def __iter__(self):
+        for metaid in self.meta_store:
+            yield metaid
+
+    def _deserialize(self, meta_str):
+        text = meta_str.decode('utf-8')
+        meta = json.loads(text)
+        return meta
+
+    def get_meta(self, metaid):
+        return self._deserialize(self.meta_store[metaid])
+
+    def get_data(self, dataid):
+        return self.data_store[dataid]
+    # TODO above usually returns bytes, but we may prefer a file rather
+
+    def get_revision(self, metaid):
+        meta = self.get_meta(metaid)
+        dataid = meta['dataid']
+        data = self.get_data(dataid)
+        return meta, data
+    # TODO above usually returns bytes for the data, but we may prefer a file rather
+
+
+class MutableBackend(Backend):
+    """
+    same as Backend, but read/write
+    """
+    def create(self):
+        self.meta_store.create()
+        self.data_store.create()
+
+    def destroy(self):
+        self.meta_store.destroy()
+        self.data_store.destroy()
+
+    def _serialize(self, meta):
+        text = json.dumps(meta, ensure_ascii=False)
+        meta_str = text.encode('utf-8')
+        return meta_str
+
+    def store_meta(self, meta):
+        metaid = make_uuid()
+        meta['metaid'] = metaid
+        self.meta_store[metaid] = self._serialize(meta)
+        return metaid
+
+    def store_data(self, data):
+        dataid = make_uuid()
+        self.data_store[dataid] = data
+        return dataid
+
+    def store_revision(self, meta, data):
+        dataid = self.store_data(data)
+        meta['dataid'] = dataid
+        # if something goes wrong below, the data shall be purged by a garbage collection
+        metaid = self.store_meta(meta)
+        return metaid
+
+    def del_meta(self, metaid):
+        del self.meta_store[metaid]
+
+    def del_data(self, dataid):
+        del self.data_store[dataid]
+
+    def del_revision(self, metaid):
+        meta = self.get_meta(metaid)
+        dataid = meta['dataid']
+        self.del_meta(metaid)
+        self.del_data(dataid)
