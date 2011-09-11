@@ -14,12 +14,12 @@ from __future__ import absolute_import, division
 import pytest
 
 from backend.storages import MutableBackend
-from backend._tests import BackendTestBase
+from backend._tests import MutableBackendTestBase
 
 from storage.memory import BytesStorage as MemoryBytesStorage
 from storage.memory import FileStorage as MemoryFileStorage
 
-class TestMemoryBackend(BackendTestBase):
+class TestMemoryBackend(MutableBackendTestBase):
     def setup_method(self, method):
         meta_store = MemoryBytesStorage()
         data_store = MemoryFileStorage()
@@ -32,7 +32,7 @@ import os, tempfile
 from storage.fs import BytesStorage as FSBytesStorage
 from storage.fs import FileStorage as FSFileStorage
 
-class TestFSBackend(BackendTestBase):
+class TestFSBackend(MutableBackendTestBase):
     def setup_method(self, method):
         meta_path = tempfile.mkdtemp()
         os.rmdir(meta_path)

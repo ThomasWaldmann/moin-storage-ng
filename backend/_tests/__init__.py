@@ -12,8 +12,28 @@ from StringIO import StringIO
 
 import pytest
 
-
 class BackendTestBase(object):
+    def setup_method(self, method):
+        """
+        self.be needs to be an opened backend
+        """
+        raise NotImplemented
+
+    def teardown_method(self, method):
+        """
+        close and destroy self.be
+        """
+        self.be.close()
+
+    def test_getrevision_raises(self):
+        with pytest.raises(KeyError):
+            self.be.get_revision('doesnotexist')
+
+    def test_iter(self):
+        assert list(self.be) == []
+
+
+class MutableBackendTestBase(BackendTestBase):
     def setup_method(self, method):
         """
         self.be needs to be an created/opened backend
