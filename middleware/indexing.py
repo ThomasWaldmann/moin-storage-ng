@@ -40,6 +40,7 @@ from whoosh.writing import AsyncWriter
 from whoosh.filedb.multiproc import MultiSegmentWriter
 from whoosh.qparser import QueryParser, MultifieldParser
 from whoosh.query import Every
+from whoosh.sorting import FieldFacet
 
 from config import WIKINAME, NAME, NAME_EXACT, MTIME, CONTENTTYPE, TAGS, \
                    LANGUAGE, USERID, ADDRESS, HOSTNAME, SIZE, ACTION, COMMENT, \
@@ -285,10 +286,12 @@ class IndexingMiddleware(object):
         index = open_dir(self.index_dir, indexname=ALL_REVS)
         latest_revids = []
         with index.searcher() as searcher:
-            result = searcher.search(Every(), groupedby=ITEMID, sortedby=[MTIME], reverse=True)
+            result = searcher.search(Every(), groupedby=ITEMID, sortedby=FieldFacet(MTIME, reverse=True))
             by_item = result.groups(ITEMID)
-            for val in by_item.values():
-                latest_revids.append(searcher.stored_fields(val[0])[REVID])
+            for _, vals in by_item.items():
+                #XXX: figure how whoosh can order, or get the best
+                vals.sort(key=lambda docid:searcher.stored_fields(docid)[MTIME], reverse=True)
+                latest_revids.append(searcher.stored_fields(vals[0])[REVID])
         build_index(index_dir, LATEST_REVS, self.schemas[LATEST_REVS], self.wikiname, latest_revids, procs, limitmb)
 
     def update(self):
