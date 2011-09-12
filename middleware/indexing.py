@@ -468,6 +468,8 @@ class Item(object):
         Check if revision with that revid exists (via index) -
         if yes, destroy revision with that revid.
         if no, raise RevisionDoesNotExistError.
+
+        Note: we destroy the data and most of the metadata values, but keep "reason" in some rudimentary metadata
         """
         # TODO (data reference?)
         
