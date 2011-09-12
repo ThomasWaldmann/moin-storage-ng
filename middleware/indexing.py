@@ -283,7 +283,7 @@ class IndexingMiddleware(object):
 
         
         index = open_dir(self.index_dir, indexname=ALL_REVS)
-        latest_revids = []  # TODO: idea: search for Everything in all-revs, sortedby itemid, mtime
+        latest_revids = []
         with index.searcher() as searcher:
             result = searcher.search(Every(), groupedby=ITEMID, sortedby=[MTIME], reverse=True)
             by_item = result.groups(ITEMID)
