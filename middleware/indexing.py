@@ -468,9 +468,8 @@ class Item(object):
         revid = backend.store_revision(meta, data)
         data.seek(0)  # rewind file
         self.router.index_revision(revid, meta, data)
-        data.seek(0)  # rewind file
         self.current_revision = revid
-        return Revision(self, revid, meta, data)
+        return Revision(self, revid)
 
     def destroy_revision(self, revid, reason=None):
         """
@@ -494,15 +493,11 @@ class Revision(object):
     """
     An existing revision (exists in the backend).
     """
-    def __init__(self, item, revid, meta=None, data=None):
+    def __init__(self, item, revid):
         self.item = item
         self.revid = revid
         self.backend = item.backend
-        if meta is None and data is None:
-            self.meta, self.data = self.backend.get_revision(self.revid) # raises KeyError if rev does not exist
-        else:
-            # Item.create_revision() gives us meta and data, so we don't need to access the backend again
-            self.meta, self.data = meta, data
+        self.meta, self.data = self.backend.get_revision(self.revid) # raises KeyError if rev does not exist
 
     def close(self):
         self.data.close()
