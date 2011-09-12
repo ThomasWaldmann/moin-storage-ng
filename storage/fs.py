@@ -67,8 +67,4 @@ class FileStorage(_Storage, FileMutableStorageBase):
     def __setitem__(self, key, stream):
         with open(self._mkpath(key), "wb") as f:
             blocksize = 64 * 1024
-            data = stream.read(blocksize)
-            while data:
-                f.write(data)
-                data = stream.read(blocksize)
-
+            shutil.copyfileobj(stream, f, blocksize)
