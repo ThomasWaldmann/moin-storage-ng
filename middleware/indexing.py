@@ -46,7 +46,7 @@ from config import WIKINAME, NAME, NAME_EXACT, MTIME, CONTENTTYPE, TAGS, \
 
 LATEST_REVS = 'latest_revs'
 ALL_REVS = 'all_revs'
-
+INDEXES = [LATEST_REVS, ALL_REVS, ]
 
 def backend_to_index(meta, content, schema, wikiname):
     """
@@ -187,15 +187,15 @@ class IndexingMiddleware(object):
         """
         index_dir = self.index_dir
         try:
-            self.ix[LATEST_REVS] = open_dir(index_dir, indexname=LATEST_REVS)
-            self.ix[ALL_REVS] = open_dir(index_dir, indexname=ALL_REVS)
+            for name in INDEXES:
+                self.ix[name] = open_dir(index_dir, indexname=name)
         except (IOError, OSError, EmptyIndexError) as err:
-            logging.error(u"%s [while trying to open index in '%s']" % (str(err), index_dir))
+            logging.error(u"%s [while trying to open index '%s' in '%s']" % (str(err), name, index_dir))
             raise
 
     def close(self):
         """
-        close index, free resources
+        close all indexes, free resources
         """
         for name in self.ix:
             self.ix[name].close()
@@ -213,10 +213,10 @@ class IndexingMiddleware(object):
             # in case there are problems with the index_dir
             pass
         try:
-            create_in(index_dir, self.schemas[LATEST_REVS], indexname=LATEST_REVS)
-            create_in(index_dir, self.schemas[ALL_REVS], indexname=ALL_REVS)
+            for name in INDEXES:
+                create_in(index_dir, self.schemas[name], indexname=name)
         except (IOError, OSError) as err:
-            logging.error(u"%s [while trying to create index in '%s']" % (str(err), index_dir))
+            logging.error(u"%s [while trying to create index '%s' in '%s']" % (str(err), name, index_dir))
             raise
 
     def destroy(self, tmp=False):
