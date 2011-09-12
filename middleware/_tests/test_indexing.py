@@ -147,3 +147,20 @@ class TestIndexingMiddleware(object):
         latest_revids = sorted(x[REVID] for x in latest_docs)
         assert latest_revids == expected_latest_revids
 
+    def test_revision_contextmanager(self):
+        # check if rev.data is closed after leaving the with-block
+        item_name = u'foo'
+        meta = dict(name=item_name)
+        data = 'some test content'
+        item = self.imw[item_name]
+        data_file = StringIO(data)
+        with item.create_revision(meta, data_file) as rev:
+            assert rev.data.read() == data
+            revid = rev.revid
+        with pytest.raises(ValueError):
+            rev.data.read()
+        with item.get_revision(revid) as rev:
+            assert rev.data.read() == data
+        with pytest.raises(ValueError):
+            rev.data.read()
+

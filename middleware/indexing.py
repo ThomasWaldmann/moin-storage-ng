@@ -504,4 +504,12 @@ class Revision(object):
             # Item.create_revision() gives us meta and data, so we don't need to access the backend again
             self.meta, self.data = meta, data
 
+    def close(self):
+        self.data.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self.close()
 
