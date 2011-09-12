@@ -24,6 +24,7 @@ from __future__ import absolute_import, division
 
 import os
 import shutil
+import itertools
 import time, datetime
 
 from uuid import uuid4
@@ -38,6 +39,7 @@ from whoosh.index import open_dir, create_in, EmptyIndexError
 from whoosh.writing import AsyncWriter
 from whoosh.filedb.multiproc import MultiSegmentWriter
 from whoosh.qparser import QueryParser, MultifieldParser
+from whoosh.query import Every
 
 from config import WIKINAME, NAME, NAME_EXACT, MTIME, CONTENTTYPE, TAGS, \
                    LANGUAGE, USERID, ADDRESS, HOSTNAME, SIZE, ACTION, COMMENT, \
@@ -82,6 +84,7 @@ def convert_to_indexable(meta, data):
                  rev.seek(0) before calling convert_to_indexable(rev).
     :returns: indexable content, text/plain, unicode object
     """
+    # stringio sucks
     return u'' # TODO integrate real thing after merge into moin2 code base.
 
 
@@ -277,7 +280,14 @@ class IndexingMiddleware(object):
         all_revids = self.backend # the backend is a iterator over all revids
         build_index(index_dir, ALL_REVS, self.schemas[ALL_REVS], self.wikiname, all_revids, procs, limitmb)
 
+        
+        index = open_dir(self.index_dir, indexname=ALL_REVS)
         latest_revids = []  # TODO: idea: search for Everything in all-revs, sortedby itemid, mtime
+        with index.searcher() as searcher:
+            result = searcher.search(Every(), groupedby=ITEMID, sortedby=[MTIME], reverse=True)
+            by_item = result.groups(ITEMID)
+            for val in by_item.values():
+                latest_revids.append(searcher.stored_fields(val[0])[REVID])
         build_index(index_dir, LATEST_REVS, self.schemas[LATEST_REVS], self.wikiname, latest_revids, procs, limitmb)
 
     def update(self):
