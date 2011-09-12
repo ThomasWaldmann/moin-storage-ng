@@ -451,9 +451,17 @@ class Item(object):
         meta[ITEMID] = self.itemid
         # later: backend_name, backend = self.router.backend_rest(self.name)
         backend = self.backend
-        self.current_revision = backend.store_revision(meta, data)
-        self.router.index_revision(self.current_revision, meta, data)
-        return self.current_revision
+        revid = backend.store_revision(meta, data)
+        self.router.index_revision(revid, meta, data)
+        self.current_revision = revid
+        rev = Revision(self, revid, meta, data) # TODO: return this in future
+        return rev.revid  # XXX keep for compatibility for now
+
+    def __getitem__(self, revid):
+        """
+        Get Revision with revision id <revid>.
+        """
+        return Revision(self, revid)
 
     def get_revision(self, revid):
         """
@@ -461,7 +469,8 @@ class Item(object):
 
         :returns: meta (dict), data (str or stream, caller must close stream after use)
         """
-        return self.backend.get_revision(revid)
+        rev = self[revid]
+        return rev.meta, rev.data  # XXX keep for compatibility for now
 
     def destroy_revision(self, revid, reason=None):
         """
@@ -481,53 +490,18 @@ class Item(object):
             self.destroy_revision(revid, reason)
 
 
-# XXX do we want to do the API this way (needs more work below and refactoring above)?:
-'''
-    def __getitem__(self, revid):
-        return Revision(self, revid)
-
-    def create_revision(self):
-        return Revision.create(self)
-
-    def existing_revision(self, revid):
-        return Revision.existing(self, revid)
-
-
 class Revision(object):
-    def __init__(self, item, revid):
+    """
+    An existing revision (exists in the backend).
+    """
+    def __init__(self, item, revid, meta=None, data=None):
         self.item = item
         self.revid = revid
         self.backend = item.backend
-        self.meta = None
-        self.data = None
-        if self.revid:
-            try:
-                self.meta, self.data = self.backend.get_revision(self.revid)
-            except KeyError:
-                pass
+        if meta is None and data is None:
+            self.meta, self.data = self.backend.get_revision(self.revid) # raises KeyError if rev does not exist
+        else:
+            # create_revision gives us meta and data, so we don't need to access backend again
+            self.meta, self.data = meta, data
 
-    @classmethod
-    def create(cls, item):
-        """
-        create a new revision and return it
-        """
-        rev = cls(item, None)
-        return rev
-
-    @classmethod
-    def existing(cls, item, revid):
-        """
-        get an existing revision and return it, raise exception if it does not exist
-        """
-        rev = cls(item, revid)
-        if not rev:
-            return rev
-        raise RevisionDoesNotExist(revid)
-
-    def __nonzero__(self):
-        """
-        revision exists?
-        """
-        return self.meta is not None
-'''
 
