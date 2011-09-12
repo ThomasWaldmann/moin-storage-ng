@@ -96,7 +96,7 @@ class MutableBackend(Backend, MutableBackendBase):
         meta_str = text.encode('utf-8')
         return meta_str
 
-    def store_meta(self, meta):
+    def _store_meta(self, meta):
         metaid = make_uuid()
         meta[REVID] = metaid
         meta = self._serialize(meta)
@@ -106,7 +106,7 @@ class MutableBackend(Backend, MutableBackendBase):
         self.meta_store[metaid] = meta
         return metaid
 
-    def store_data(self, data):
+    def _store_data(self, data):
         dataid = make_uuid()
         # XXX Idea: we could check the type the store wants from us:
         # if it is a str/bytes (BytesStorage), just use meta "as is",
@@ -116,22 +116,23 @@ class MutableBackend(Backend, MutableBackendBase):
 
     def store_revision(self, meta, data):
         tfw = TrackingFileWrapper(data, hash_method=HASH_ALGORITHM)
-        dataid = self.store_data(tfw)
+        dataid = self._store_data(tfw)
         meta['dataid'] = dataid
         meta['size'] = tfw.size
         meta[HASH_ALGORITHM] = tfw.hash.hexdigest()
         # if something goes wrong below, the data shall be purged by a garbage collection
-        metaid = self.store_meta(meta)
+        metaid = self._store_meta(meta)
         return metaid
 
-    def del_meta(self, metaid):
+    def _del_meta(self, metaid):
         del self.meta_store[metaid]
 
-    def del_data(self, dataid):
+    def _del_data(self, dataid):
         del self.data_store[dataid]
 
     def del_revision(self, metaid):
         meta = self._get_meta(metaid)
         dataid = meta['dataid']
-        self.del_meta(metaid)
-        self.del_data(dataid)
+        self._del_meta(metaid)
+        self._del_data(dataid)
+
