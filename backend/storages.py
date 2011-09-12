@@ -21,6 +21,8 @@ from uuid import uuid4
 make_uuid = lambda: unicode(uuid4().hex)
 UUID_LEN = len(make_uuid())
 
+from config import REVID, HASH_ALGORITHM
+
 from backend import BackendBase, MutableBackendBase
 from backend._util import TrackingFileWrapper
 
@@ -96,7 +98,7 @@ class MutableBackend(Backend, MutableBackendBase):
 
     def store_meta(self, meta):
         metaid = make_uuid()
-        meta['metaid'] = metaid
+        meta[REVID] = metaid
         meta = self._serialize(meta)
         # XXX Idea: we could check the type the store wants from us:
         # if it is a str/bytes (BytesStorage), just use meta "as is",
@@ -113,12 +115,11 @@ class MutableBackend(Backend, MutableBackendBase):
         return dataid
 
     def store_revision(self, meta, data):
-        HASH_METHOD = 'sha1'
-        tfw = TrackingFileWrapper(data, hash_method=HASH_METHOD)
+        tfw = TrackingFileWrapper(data, hash_method=HASH_ALGORITHM)
         dataid = self.store_data(tfw)
         meta['dataid'] = dataid
         meta['size'] = tfw.size
-        meta[HASH_METHOD] = tfw.hash.hexdigest()
+        meta[HASH_ALGORITHM] = tfw.hash.hexdigest()
         # if something goes wrong below, the data shall be purged by a garbage collection
         metaid = self.store_meta(meta)
         return metaid
