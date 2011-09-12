@@ -273,15 +273,21 @@ class IndexingMiddleware(object):
                 doc = backend_to_index(meta, content, self.schemas[ALL_REVS], self.wikiname)
                 writer.add_document(**doc)
 
-        # TODO: build ix[LATEST_REVS] using ix[ALL_REVS], algorithm idea:
-        # first determine set(revids) - set(parent_revids)  (we need both in index)
-        # ---> these are all heads of all items
-        # now group by itemid, sort groups by mtime (reverse)
-        # each first rev in a run of same-item revs is the latest revision
-        # index latest revisions
-        # alternatively: search for Everything, sortby itemid, mtime
-        # (this is likely more efficient if we don't need to know all heads,
-        # but just want the latest revs)
+        latest_metaids = []  # TODO: idea: search for Everything in all-revs, sortedby itemid, mtime
+
+        ix_latest = open_dir(index_dir, indexname=LATEST_REVS)
+        if procs == 1:
+            # MultiSegmentWriter sometimes has issues and is pointless for procs == 1,
+            # so use the simple writer when --procs 1 is given:
+            writer = ix_latest.writer()
+        else:
+            writer = MultiSegmentWriter(ix_latest, procs, limitmb)
+        with writer as writer:
+            for metaid in latest_metaids:
+                meta, data = self.backend.get_revision(metaid)
+                content = convert_to_indexable(meta, data)
+                doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
+                writer.add_document(**doc)
 
     def update(self):
         """
