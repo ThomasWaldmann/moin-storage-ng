@@ -48,9 +48,10 @@ LATEST_REVS = 'latest_revs'
 ALL_REVS = 'all_revs'
 INDEXES = [LATEST_REVS, ALL_REVS, ]
 
+
 def backend_to_index(meta, content, schema, wikiname):
     """
-    Convert fields from backend format to whoosh schema
+    Convert backend metadata/data to a whoosh document.
 
     :param meta: revision meta from moin storage
     :param content: revision data converted to indexable content
@@ -71,7 +72,7 @@ def backend_to_index(meta, content, schema, wikiname):
 
 def convert_to_indexable(meta, data):
     """
-    convert revision data to a indexable content
+    Convert revision data to a indexable content.
 
     :param meta: revision metadata (gets updated as a side effect)
     :param data: revision data (file-like)
@@ -79,7 +80,7 @@ def convert_to_indexable(meta, data):
                  ready to read all indexable content from it. if you have just
                  written that content or already read from it, you need to call
                  rev.seek(0) before calling convert_to_indexable(rev).
-    :returns: indexable content, text/plain;charset=utf-8
+    :returns: indexable content, text/plain, unicode object
     """
     return u'' # TODO integrate real thing after merge into moin2 code base.
 
@@ -87,7 +88,7 @@ def convert_to_indexable(meta, data):
 class IndexingMiddleware(object):
     def __init__(self, index_dir, backend, **kw):
         """
-        just remember stuff for create / open, pathes, urls, db names, ...
+        Store params, create schemas.
         """
         self.index_dir = index_dir
         self.index_dir_tmp = index_dir + '.temp'
@@ -183,7 +184,7 @@ class IndexingMiddleware(object):
 
     def open(self):
         """
-        open index, allocate resources
+        Open all indexes.
         """
         index_dir = self.index_dir
         try:
@@ -195,7 +196,7 @@ class IndexingMiddleware(object):
 
     def close(self):
         """
-        close all indexes, free resources
+        Close all indexes.
         """
         for name in self.ix:
             self.ix[name].close()
@@ -203,7 +204,7 @@ class IndexingMiddleware(object):
 
     def create(self, tmp=False):
         """
-        create empty indexes
+        Create all indexes (empty).
         """
         index_dir = self.index_dir_tmp if tmp else self.index_dir
         try:
@@ -221,7 +222,7 @@ class IndexingMiddleware(object):
 
     def destroy(self, tmp=False):
         """
-        permanently remove index contents
+        Destroy all indexes.
         """
         index_dir = self.index_dir_tmp if tmp else self.index_dir
         if os.path.exists(index_dir):
@@ -229,14 +230,14 @@ class IndexingMiddleware(object):
 
     def move_index(self):
         """
-        Moves a freshly built index in index_dir_tmp to index_dir.
+        Move freshly built indexes from index_dir_tmp to index_dir.
         """
         self.destroy()
         os.rename(self.index_dir_tmp, self.index_dir)
 
     def index_revision(self, revid, meta, data):
         """
-        index a single revision, add it to all-revs and latest-revs index
+        Index a single revision, add it to all-revs and latest-revs index.
         """
         meta[REVID] = revid
         content = convert_to_indexable(meta, data)
@@ -249,11 +250,12 @@ class IndexingMiddleware(object):
 
     def rebuild(self, procs=1, limitmb=256):
         """
-        add all items/revisions of the backends of this wiki to the index
-        (which is expected to have no items/revisions from this wiki yet)
+        Add all items/revisions from the backends of this wiki to the index
+        (which is expected to have no items/revisions from this wiki yet).
         
-        note: index might be shared by multiple wikis, so it is:
+        Note: index might be shared by multiple wikis, so it is:
               create, rebuild wiki1, rebuild wiki2, ...
+              create (tmp), rebuild wiki1, rebuild wiki2, ..., move
         """
         # first we build an index of all we have (so we know what we have)
         ix_all = open_dir(self.index_dir_tmp, indexname=ALL_REVS)
@@ -282,11 +284,19 @@ class IndexingMiddleware(object):
 
     def update(self):
         """
-        make sure index reflects current backend state, add missing stuff, remove outdated stuff
-        
-        be clever, be quick, assume 99% is already ok.
+        Make sure index reflects current backend state, add missing stuff, remove outdated stuff.
         """
         # TODO
+
+    def get_schema(self, all_revs=False):
+        # XXX keep this as is for now, but later just give the index name as param
+        name = ALL_REVS if all_revs else LATEST_REVS
+        return self.schemas[name]
+
+    def get_index(self, all_revs=False):
+        # XXX keep this as is for now, but later just give the index name as param
+        name = ALL_REVS if all_revs else LATEST_REVS
+        return self.ix[name]
 
     def dump(self, all_revs=False):
         """
@@ -301,17 +311,10 @@ class IndexingMiddleware(object):
                     print "%s: %s" % (field, repr(value)[:70])
                 print
 
-    def get_schema(self, all_revs=False):
-        # XXX keep this as is for now, but later just give the index name as param
-        name = ALL_REVS if all_revs else LATEST_REVS
-        return self.schemas[name]
-
-    def get_index(self, all_revs=False):
-        # XXX keep this as is for now, but later just give the index name as param
-        name = ALL_REVS if all_revs else LATEST_REVS
-        return self.ix[name]
-
     def query_parser(self, default_fields, all_revs=False):
+        """
+        Build a query parser for a list of default fields.
+        """
         schema = self.get_schema(all_revs)
         if len(default_fields) > 1:
             qp = MultifieldParser(default_fields, schema=schema)
@@ -322,6 +325,9 @@ class IndexingMiddleware(object):
         return qp
 
     def search(self, q, all_revs=False, **kw):
+        """
+        Search with query q, yield stored fields.
+        """
         with self.get_index(all_revs).searcher() as searcher:
             # Note: callers must consume everything we yield, so the for loop
             # ends and the "with" is left to close the index files.
@@ -329,6 +335,9 @@ class IndexingMiddleware(object):
                 yield hit.fields()
 
     def search_page(self, q, all_revs=False, pagenum=1, pagelen=10, **kw):
+        """
+        Same as search, but with paging support.
+        """
         with self.get_index(all_revs).searcher() as searcher:
             # Note: callers must consume everything we yield, so the for loop
             # ends and the "with" is left to close the index files.
@@ -336,6 +345,9 @@ class IndexingMiddleware(object):
                 yield hit.fields()
 
     def documents(self, all_revs=False, **kw):
+        """
+        Yield documents matching the kw args.
+        """
         with self.get_index(all_revs).searcher() as searcher:
             # Note: callers must consume everything we yield, so the for loop
             # ends and the "with" is left to close the index files.
@@ -343,16 +355,28 @@ class IndexingMiddleware(object):
                 yield doc
 
     def document(self, all_revs=False, **kw):
+        """
+        Return document matching the kw args.
+        """
         with self.get_index(all_revs).searcher() as searcher:
             return searcher.document(**kw)
 
     def __getitem__(self, item_name):
+        """
+        Return item with <item_name> (may be a new or existing item).
+        """
         return Item(self, item_name)
 
     def create_item(self, item_name):
+        """
+        Return item with <item_name> (must be a new item).
+        """
         return Item.create(self, item_name)
 
     def existing_item(self, item_name):
+        """
+        Return item with <item_name> (must be an existing item).
+        """
         return Item.existing(self, item_name)
 
 
@@ -372,7 +396,7 @@ class Item(object):
     @classmethod
     def create(cls, router, item_name):
         """
-        create a new item and return it, raise exception if it already exists
+        Create a new item and return it, raise exception if it already exists.
         """
         item = cls(router, item_name)
         if not item:
@@ -382,7 +406,7 @@ class Item(object):
     @classmethod
     def existing(cls, router, item_name):
         """
-        get an existing item and return it, raise exception if it does not exist
+        Get an existing item and return it, raise exception if it does not exist.
         """
         item = cls(router, item_name)
         if item:
@@ -391,13 +415,13 @@ class Item(object):
 
     def __nonzero__(self):
         """
-        item exists?
+        Item exists (== has at least one revision)?
         """
         return self.itemid is not None
 
     def iter_revs(self):
         """
-        iterate over revids (use index)
+        Iterate over revids belonging to this item (use index).
         """
         if self:
             for doc in self.router.documents(all_revs=True, itemid=self.itemid):
@@ -405,7 +429,8 @@ class Item(object):
 
     def create_revision(self, meta, data):
         """
-        create a new revision, write metadata and data to it.
+        Create a new revision, write metadata and data to it.
+
         :type meta: dict
         :type data: str or stream (stream will be closed after use)
         """
@@ -420,7 +445,7 @@ class Item(object):
 
     def get_revision(self, revid):
         """
-        get revision meta / data for revision <revid>
+        Get revision meta / data for revision <revid>.
 
         :returns: meta (dict), data (str or stream, caller must close stream after use)
         """
@@ -428,18 +453,21 @@ class Item(object):
 
     def destroy_revision(self, revid, reason=None):
         """
-        check if revision with that revid exists (via index)
+        Check if revision with that revid exists (via index) -
         if yes, destroy revision with that revid.
         if no, raise RevisionDoesNotExistError.
         """
         # TODO (data reference?)
         
     def destroy(self, reason=None):
+        """
+        Destroy all revisions of this item.
+        """
         for revid in self.iter_revs():
             self.destroy_revision(revid, reason)
 
 
-# XXX do we want to do it this way (needs more work below and refactoring above)?:
+# XXX do we want to do the API this way (needs more work below and refactoring above)?:
 '''
     def __getitem__(self, revid):
         return Revision(self, revid)
