@@ -303,7 +303,7 @@ class IndexingMiddleware(object):
         """
         Output all documents in index to stdout (most useful for debugging).
         """
-        ix = get_index(all_revs)
+        ix = self.get_index(all_revs)
         with ix.searcher() as searcher:
             for doc in searcher.all_stored_fields():
                 name = doc.pop(NAME, u"")

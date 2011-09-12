@@ -114,8 +114,10 @@ class TestIndexingMiddleware(object):
         # now we remember the index contents built that way:
         expected_latest_docs = list(self.imw.documents(all_revs=False))
         expected_all_docs = list(self.imw.documents(all_revs=True))
-        print "latest on-the-fly:", expected_latest_docs
-        print "all on-the-fly:", expected_all_docs
+        print "*** all on-the-fly:"
+        self.imw.dump(all_revs=True)
+        print "*** latest on-the-fly:"
+        self.imw.dump(all_revs=False)
         # now kill the index and do a full rebuild
         self.imw.close()
         self.imw.destroy()
@@ -125,8 +127,10 @@ class TestIndexingMiddleware(object):
         # read the index contents built that way:
         latest_docs = list(self.imw.documents(all_revs=False))
         all_docs = list(self.imw.documents(all_revs=True))
-        print "latest rebuild:", latest_docs
-        print "all rebuild:", all_docs
+        print "*** all rebuilt:"
+        self.imw.dump(all_revs=True)
+        print "*** latest rebuilt:"
+        self.imw.dump(all_revs=False)
         # should be both the same, order does not matter:
         assert sorted(expected_all_docs) == sorted(all_docs)
         assert sorted(expected_latest_docs) == sorted(latest_docs)
