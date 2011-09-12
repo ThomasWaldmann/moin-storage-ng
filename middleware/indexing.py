@@ -93,8 +93,8 @@ class IndexingMiddleware(object):
         self.index_dir_tmp = index_dir + '.temp'
         self.backend = backend
         self.wikiname = u'' # TODO take from app.cfg.interwikiname
-        self.ix_latest = None
-        self.ix_all = None
+        self.ix = {}  # open indexes
+        self.schemas = {}  # existing schemas
 
         common_fields = {
             # wikiname so we can have a shared index in a wiki farm, always check this!
@@ -178,8 +178,8 @@ class IndexingMiddleware(object):
             all_revisions_schema.add(glob, field_type, glob=True)
 
         # schemas are needed by query parser and for index creation
-        self.schema_all = all_revisions_schema
-        self.schema_latest = latest_revisions_schema
+        self.schemas[ALL_REVS] = all_revisions_schema
+        self.schemas[LATEST_REVS] = latest_revisions_schema
 
     def open(self):
         """
@@ -187,8 +187,8 @@ class IndexingMiddleware(object):
         """
         index_dir = self.index_dir
         try:
-            self.ix_latest = open_dir(index_dir, indexname=LATEST_REVS)
-            self.ix_all = open_dir(index_dir, indexname=ALL_REVS)
+            self.ix[LATEST_REVS] = open_dir(index_dir, indexname=LATEST_REVS)
+            self.ix[ALL_REVS] = open_dir(index_dir, indexname=ALL_REVS)
         except (IOError, OSError, EmptyIndexError) as err:
             logging.error(u"%s [while trying to open index in '%s']" % (str(err), index_dir))
             raise
@@ -197,12 +197,9 @@ class IndexingMiddleware(object):
         """
         close index, free resources
         """
-        if self.ix_latest is not None:
-            self.ix_latest.close()
-            self.ix_latest = None
-        if self.ix_all is not None:
-            self.ix_all.close()
-            self.ix_all = None
+        for name in self.ix:
+            self.ix[name].close()
+        self.ix = {}
 
     def create(self, tmp=False):
         """
@@ -216,8 +213,8 @@ class IndexingMiddleware(object):
             # in case there are problems with the index_dir
             pass
         try:
-            create_in(index_dir, self.schema_latest, indexname=LATEST_REVS)
-            create_in(index_dir, self.schema_all, indexname=ALL_REVS)
+            create_in(index_dir, self.schemas[LATEST_REVS], indexname=LATEST_REVS)
+            create_in(index_dir, self.schemas[ALL_REVS], indexname=ALL_REVS)
         except (IOError, OSError) as err:
             logging.error(u"%s [while trying to create index in '%s']" % (str(err), index_dir))
             raise
@@ -243,11 +240,11 @@ class IndexingMiddleware(object):
         """
         meta[REVID] = revid
         content = convert_to_indexable(meta, data)
-        with AsyncWriter(self.ix_all) as writer:
-            doc = backend_to_index(meta, content, self.schema_all, self.wikiname)
+        with AsyncWriter(self.ix[ALL_REVS]) as writer:
+            doc = backend_to_index(meta, content, self.schemas[ALL_REVS], self.wikiname)
             writer.add_document(**doc)
-        with AsyncWriter(self.ix_latest) as writer:
-            doc = backend_to_index(meta, content, self.schema_latest, self.wikiname)
+        with AsyncWriter(self.ix[LATEST_REVS]) as writer:
+            doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
             writer.add_document(**doc)
 
     def rebuild(self, procs=1, limitmb=256):
@@ -270,15 +267,15 @@ class IndexingMiddleware(object):
             for metaid in self.backend:
                 meta, data = backend.get_revision(metaid)
                 content = convert_to_indexable(meta, data)
-                doc = backend_to_index(meta, content, self.schema_all, self.wikiname)
+                doc = backend_to_index(meta, content, self.schemas[ALL_REVS], self.wikiname)
                 writer.add_document(**doc)
 
-        # TODO: build ix_latest using ix_all, algorithm idea:
+        # TODO: build ix[LATEST_REVS] using ix[ALL_REVS], algorithm idea:
         # first determine set(revids) - set(parent_revids)  (we need both in index)
         # ---> these are all heads of all items
         # now group by itemid, sort groups by mtime (reverse)
         # each first rev in a run of same-item revs is the latest revision
-        # index latest revisions to ix_latest
+        # index latest revisions
         # alternatively: search for Everything, sortby itemid, mtime
         # (this is likely more efficient if we don't need to know all heads,
         # but just want the latest revs)
@@ -305,12 +302,14 @@ class IndexingMiddleware(object):
                 print
 
     def get_schema(self, all_revs=False):
-        # XXX keep this as is for now, but later just give the index name LATEST_REVS, ALL_REVS, ...
-        return self.schema_all if all_revs else self.schema_latest
+        # XXX keep this as is for now, but later just give the index name as param
+        name = ALL_REVS if all_revs else LATEST_REVS
+        return self.schemas[name]
 
     def get_index(self, all_revs=False):
-        # XXX keep this as is for now, but later just give the index name LATEST_REVS, ALL_REVS, ...
-        return self.ix_all if all_revs else self.ix_latest
+        # XXX keep this as is for now, but later just give the index name as param
+        name = ALL_REVS if all_revs else LATEST_REVS
+        return self.ix[name]
 
     def query_parser(self, default_fields, all_revs=False):
         schema = self.get_schema(all_revs)
