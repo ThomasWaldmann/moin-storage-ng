@@ -103,23 +103,23 @@ class TestIndexingMiddleware(object):
         assert docs[0][REVID] == rev2.revid
 
     def test_rebuild(self):
-        generated_latest_revids = []
+        expected_latest_revids = []
         
         # first we index some stuff the slow "on-the-fly" way:
         item_name = u'foo'
         item = self.imw[item_name]
-        r = item.create_revision(dict(name=item_name), StringIO('does not count, different name'))
+        r = item.create_revision(dict(name=item_name, mtime=1), StringIO('does not count, different name'))
 
-        generated_latest_revids.append(r)
+        expected_latest_revids.append(r.revid)
 
         item_name = u'bar'
         item = self.imw[item_name]
         #XXX: mtime/parents
-        item.create_revision(dict(name=item_name), StringIO('1st'))
-        r = item.create_revision(dict(name=item_name), StringIO('2nd'))
+        item.create_revision(dict(name=item_name, mtime=1), StringIO('1st'))
+        r = item.create_revision(dict(name=item_name, mtime=2), StringIO('2nd'))
 
-        generated_latest_revids.append(r)
-        generated_latest_revids.sort()
+        expected_latest_revids.append(r.revid)
+        expected_latest_revids.sort()
         # now we remember the index contents built that way:
         expected_latest_docs = list(self.imw.documents(all_revs=False))
         expected_all_docs = list(self.imw.documents(all_revs=True))
@@ -145,4 +145,5 @@ class TestIndexingMiddleware(object):
         assert sorted(expected_latest_docs) == sorted(latest_docs)
 
         latest_revids = sorted(x[REVID] for x in latest_docs)
+        assert latest_revids == expected_latest_revids
 
