@@ -65,7 +65,9 @@ def backend_to_index(meta, content, schema, wikiname):
     doc = dict([(str(key), value)
                 for key, value in meta.items()
                 if key in schema])
-    # TODO not there yet: doc[MTIME] = datetime.datetime.utcfromtimestamp(doc[MTIME])
+    if MTIME in doc:
+        # we have UNIX UTC timestamp (int), whoosh wants datetime
+        doc[MTIME] = datetime.datetime.utcfromtimestamp(doc[MTIME])
     doc[NAME_EXACT] = doc[NAME]
     doc[WIKINAME] = wikiname
     doc[CONTENT] = content
@@ -84,9 +86,7 @@ def convert_to_indexable(meta, data):
                  rev.seek(0) before calling convert_to_indexable(rev).
     :returns: indexable content, text/plain, unicode object
     """
-    # stringio sucks
-    # once closed anywhere, the buffers are dropped this kills the in-memory backends
-    return u'' # TODO integrate real thing after merge into moin2 code base.
+    return unicode(data.read()) # TODO integrate real thing after merge into moin2 code base.
 
 
 class IndexingMiddleware(object):

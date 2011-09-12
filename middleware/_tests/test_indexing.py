@@ -13,7 +13,7 @@ import hashlib
 
 import pytest
 
-from config import NAME, SIZE, ITEMID, REVID, DATAID, HASH_ALGORITHM
+from config import NAME, SIZE, ITEMID, REVID, DATAID, HASH_ALGORITHM, CONTENT
 
 from middleware.indexing import IndexingMiddleware
 from backend.storages import MutableBackend
@@ -163,4 +163,18 @@ class TestIndexingMiddleware(object):
             assert rev.data.read() == data
         with pytest.raises(ValueError):
             rev.data.read()
+
+    def test_indexed_content(self):
+        # TODO: this is a very simple check that assumes that data is put 1:1
+        # into index' CONTENT field.
+        item_name = u'foo'
+        meta = dict(name=item_name)
+        data = 'some test content'
+        item = self.imw[item_name]
+        data_file = StringIO(data)
+        with item.create_revision(meta, data_file) as rev:
+            expected_revid = rev.revid
+        doc = self.imw.document(content=u'test')
+        assert expected_revid == doc[REVID]
+        assert unicode(data) == doc[CONTENT]
 
