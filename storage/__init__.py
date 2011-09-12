@@ -63,6 +63,9 @@ class FileStorageBase(StorageBase):
     def __getitem__(self, key):
         """
         return a filelike for key if exists else raise KeyError
+
+        note: the caller is responsible for closing the open file we return
+              after usage.
         """
 
 
@@ -95,7 +98,7 @@ class MutableStorageBase(StorageBase, MutableMapping):
 
 class BytesMutableStorageBase(MutableStorageBase):
     @abstractmethod
-    def __setitem__(self, key):
+    def __setitem__(self, key, value):
         """
         store a bytestring for key
         """
@@ -103,8 +106,12 @@ class BytesMutableStorageBase(MutableStorageBase):
 
 class FileMutableStorageBase(MutableStorageBase):
     @abstractmethod
-    def __setitem__(self, key):
+    def __setitem__(self, key, stream):
         """
         store a filelike for key
+
+        note: caller is responsible for giving us a open file AND also for
+              closing that file later. caller must not rely on some specific
+              file pointer position after we return.
         """
 

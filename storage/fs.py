@@ -65,13 +65,10 @@ class FileStorage(_Storage, FileMutableStorageBase):
             raise
 
     def __setitem__(self, key, stream):
-        try:
-            with open(self._mkpath(key), "wb") as f:
-                blocksize = 64 * 1024
+        with open(self._mkpath(key), "wb") as f:
+            blocksize = 64 * 1024
+            data = stream.read(blocksize)
+            while data:
+                f.write(data)
                 data = stream.read(blocksize)
-                while data:
-                    f.write(data)
-                    data = stream.read(blocksize)
-        finally:
-            stream.close()
 

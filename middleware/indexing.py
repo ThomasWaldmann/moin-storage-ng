@@ -458,7 +458,7 @@ class Item(object):
         Create a new revision, write metadata and data to it.
 
         :type meta: dict
-        :type data: str or stream (stream will be closed after use)
+        :type data: open file (file must be closed by caller)
         """
         if self.itemid is None:
             self.itemid = make_uuid()
@@ -466,7 +466,9 @@ class Item(object):
         # later: backend_name, backend = self.router.backend_rest(self.name)
         backend = self.backend
         revid = backend.store_revision(meta, data)
+        data.seek(0)  # rewind file
         self.router.index_revision(revid, meta, data)
+        data.seek(0)  # rewind file
         self.current_revision = revid
         return Revision(self, revid, meta, data)
 

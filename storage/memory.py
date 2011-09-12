@@ -43,8 +43,4 @@ class FileStorage(_Storage, FileMutableStorageBase):
         return StringIO(self._st[key])
 
     def __setitem__(self, key, stream):
-        try:
-            value = stream.read()
-            self._st[key] = value
-        finally:
-            stream.close()
+        self._st[key] = stream.read()

@@ -19,7 +19,6 @@ class TrackingFileWrapper(object):
     Users need to call .read(blocksize) until it does not return any more data.
     After this self.hash and self.size will have the wanted values.
     self.hash is the hash instance, you may want to call self.hash.hexdigest().
-    Finally, you must call .close().
     """
     def __init__(self, realfile, hash_method='sha1'):
         self._realfile = realfile
@@ -31,13 +30,3 @@ class TrackingFileWrapper(object):
         self.hash.update(data)
         self.size += len(data)
         return data
-
-    def close(self):
-        self._realfile.close()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
