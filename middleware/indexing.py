@@ -85,6 +85,7 @@ def convert_to_indexable(meta, data):
     :returns: indexable content, text/plain, unicode object
     """
     # stringio sucks
+    # once closed anywhere, the buffers are dropped this kills the in-memory backends
     return u'' # TODO integrate real thing after merge into moin2 code base.
 
 
