@@ -439,6 +439,18 @@ class Item(object):
             for doc in self.router.documents(all_revs=True, itemid=self.itemid):
                 yield doc[REVID]
 
+    def __getitem__(self, revid):
+        """
+        Get Revision with revision id <revid>.
+        """
+        return Revision(self, revid)
+
+    def get_revision(self, revid):
+        """
+        Same as item[revid].
+        """
+        return self[revid]
+
     def create_revision(self, meta, data):
         """
         Create a new revision, write metadata and data to it.
@@ -454,23 +466,7 @@ class Item(object):
         revid = backend.store_revision(meta, data)
         self.router.index_revision(revid, meta, data)
         self.current_revision = revid
-        rev = Revision(self, revid, meta, data) # TODO: return this in future
-        return rev.revid  # XXX keep for compatibility for now
-
-    def __getitem__(self, revid):
-        """
-        Get Revision with revision id <revid>.
-        """
-        return Revision(self, revid)
-
-    def get_revision(self, revid):
-        """
-        Get revision meta / data for revision <revid>.
-
-        :returns: meta (dict), data (str or stream, caller must close stream after use)
-        """
-        rev = self[revid]
-        return rev.meta, rev.data  # XXX keep for compatibility for now
+        return Revision(self, revid, meta, data)
 
     def destroy_revision(self, revid, reason=None):
         """
@@ -501,7 +497,7 @@ class Revision(object):
         if meta is None and data is None:
             self.meta, self.data = self.backend.get_revision(self.revid) # raises KeyError if rev does not exist
         else:
-            # create_revision gives us meta and data, so we don't need to access backend again
+            # Item.create_revision() gives us meta and data, so we don't need to access the backend again
             self.meta, self.data = meta, data
 
 

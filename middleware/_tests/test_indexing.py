@@ -59,7 +59,7 @@ class TestIndexingMiddleware(object):
         item.create_revision(dict(name=item_name), StringIO('1st'))
         item.create_revision(dict(name=item_name), StringIO('2nd'))
         item = self.imw[item_name]
-        revs = [item.get_revision(revid)[1].read() for revid in item.iter_revs()]
+        revs = [item[revid].data.read() for revid in item.iter_revs()]
         assert len(revs) == 2
         assert set(revs) == set(['1st', '2nd'])
 
@@ -70,37 +70,37 @@ class TestIndexingMiddleware(object):
         item_name = u'bar'
         item = self.imw[item_name]
         item.create_revision(dict(name=item_name), StringIO('1st'))
-        expected_revid = item.create_revision(dict(name=item_name), StringIO('2nd'))
+        expected_rev = item.create_revision(dict(name=item_name), StringIO('2nd'))
         docs = list(self.imw.documents(all_revs=False, name=item_name))
         assert len(docs) == 1  # there is only 1 latest revision
-        assert expected_revid == docs[0][REVID]  # it is really the latest one
+        assert expected_rev.revid == docs[0][REVID]  # it is really the latest one
 
     def test_auto_meta(self):
         item_name = u'foo'
         data = 'bar'
         item = self.imw[item_name]
-        revid = item.create_revision(dict(name=item_name), StringIO(data))
-        meta, _ = item.get_revision(revid)
-        print repr(meta)
-        assert meta[NAME] == item_name
-        assert meta[SIZE] == len(data)
-        assert meta[HASH_ALGORITHM] == hashlib.new(HASH_ALGORITHM, data).hexdigest()
-        assert ITEMID in meta
-        assert REVID in meta
-        assert DATAID in meta
+        rev = item.create_revision(dict(name=item_name), StringIO(data))
+        rev = item[rev.revid]
+        print repr(rev.meta)
+        assert rev.meta[NAME] == item_name
+        assert rev.meta[SIZE] == len(data)
+        assert rev.meta[HASH_ALGORITHM] == hashlib.new(HASH_ALGORITHM, data).hexdigest()
+        assert ITEMID in rev.meta
+        assert REVID in rev.meta
+        assert DATAID in rev.meta
 
     def test_documents(self):
         item_name = u'foo'
         item = self.imw[item_name]
-        revid1 = item.create_revision(dict(name=item_name), StringIO('x'))
-        revid2 = item.create_revision(dict(name=item_name), StringIO('xx'))
-        revid3 = item.create_revision(dict(name=item_name), StringIO('xxx'))
+        rev1 = item.create_revision(dict(name=item_name), StringIO('x'))
+        rev2 = item.create_revision(dict(name=item_name), StringIO('xx'))
+        rev3 = item.create_revision(dict(name=item_name), StringIO('xxx'))
         doc = self.imw.document(all_revs=True, size=2)
         assert doc
-        assert doc[REVID] == revid2
+        assert doc[REVID] == rev2.revid
         docs = list(self.imw.documents(all_revs=True, size=2))
         assert len(docs) == 1
-        assert docs[0][REVID] == revid2
+        assert docs[0][REVID] == rev2.revid
 
     def test_rebuild(self):
         # first we index some stuff the slow "on-the-fly" way:
