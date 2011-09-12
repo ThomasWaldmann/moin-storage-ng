@@ -246,7 +246,7 @@ class IndexingMiddleware(object):
             writer.add_document(**doc)
         with AsyncWriter(self.ix[LATEST_REVS]) as writer:
             doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
-            writer.add_document(**doc)
+            writer.update_document(**doc)
 
     def rebuild(self, procs=1, limitmb=256):
         """

@@ -50,7 +50,7 @@ class TestIndexingMiddleware(object):
         item = self.imw[item_name]
         assert item # does exist
 
-    def test_revisions(self):
+    def test_all_revisions(self):
         item_name = u'foo'
         item = self.imw[item_name]
         item.create_revision(dict(name=item_name), StringIO('does not count, different name'))
@@ -62,6 +62,18 @@ class TestIndexingMiddleware(object):
         revs = [item.get_revision(revid)[1].read() for revid in item.iter_revs()]
         assert len(revs) == 2
         assert set(revs) == set(['1st', '2nd'])
+
+    def test_latest_revision(self):
+        item_name = u'foo'
+        item = self.imw[item_name]
+        item.create_revision(dict(name=item_name), StringIO('does not count, different name'))
+        item_name = u'bar'
+        item = self.imw[item_name]
+        item.create_revision(dict(name=item_name), StringIO('1st'))
+        expected_revid = item.create_revision(dict(name=item_name), StringIO('2nd'))
+        docs = list(self.imw.documents(all_revs=False, name=item_name))
+        assert len(docs) == 1  # there is only 1 latest revision
+        assert expected_revid == docs[0][REVID]  # it is really the latest one
 
     def test_auto_meta(self):
         item_name = u'foo'
