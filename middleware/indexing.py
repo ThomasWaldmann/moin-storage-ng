@@ -257,37 +257,28 @@ class IndexingMiddleware(object):
               create, rebuild wiki1, rebuild wiki2, ...
               create (tmp), rebuild wiki1, rebuild wiki2, ..., move
         """
+        def build_index(index_dir, indexname, schema, wikiname, revids, procs=1, limitmb=256):
+            ix = open_dir(index_dir, indexname=indexname)
+            if procs == 1:
+                # MultiSegmentWriter sometimes has issues and is pointless for procs == 1,
+                # so use the simple writer when --procs 1 is given:
+                writer = ix.writer()
+            else:
+                writer = MultiSegmentWriter(ix, procs, limitmb)
+            with writer as writer:
+                for revid in revids:
+                    meta, data = self.backend.get_revision(revid)
+                    content = convert_to_indexable(meta, data)
+                    doc = backend_to_index(meta, content, schema, wikiname)
+                    writer.add_document(**doc)
+
         index_dir = self.index_dir_tmp if tmp else self.index_dir
         # first we build an index of all we have (so we know what we have)
-        ix_all = open_dir(index_dir, indexname=ALL_REVS)
-        if procs == 1:
-            # MultiSegmentWriter sometimes has issues and is pointless for procs == 1,
-            # so use the simple writer when --procs 1 is given:
-            writer = ix_all.writer()
-        else:
-            writer = MultiSegmentWriter(ix_all, procs, limitmb)
-        with writer as writer:
-            for metaid in self.backend:
-                meta, data = self.backend.get_revision(metaid)
-                content = convert_to_indexable(meta, data)
-                doc = backend_to_index(meta, content, self.schemas[ALL_REVS], self.wikiname)
-                writer.add_document(**doc)
+        all_revids = self.backend # the backend is a iterator over all revids
+        build_index(index_dir, ALL_REVS, self.schemas[ALL_REVS], self.wikiname, all_revids, procs, limitmb)
 
-        latest_metaids = []  # TODO: idea: search for Everything in all-revs, sortedby itemid, mtime
-
-        ix_latest = open_dir(index_dir, indexname=LATEST_REVS)
-        if procs == 1:
-            # MultiSegmentWriter sometimes has issues and is pointless for procs == 1,
-            # so use the simple writer when --procs 1 is given:
-            writer = ix_latest.writer()
-        else:
-            writer = MultiSegmentWriter(ix_latest, procs, limitmb)
-        with writer as writer:
-            for metaid in latest_metaids:
-                meta, data = self.backend.get_revision(metaid)
-                content = convert_to_indexable(meta, data)
-                doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
-                writer.add_document(**doc)
+        latest_revids = []  # TODO: idea: search for Everything in all-revs, sortedby itemid, mtime
+        build_index(index_dir, LATEST_REVS, self.schemas[LATEST_REVS], self.wikiname, latest_revids, procs, limitmb)
 
     def update(self):
         """
