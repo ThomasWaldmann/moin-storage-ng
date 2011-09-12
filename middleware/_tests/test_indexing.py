@@ -102,4 +102,32 @@ class TestIndexingMiddleware(object):
         assert len(docs) == 1
         assert docs[0][REVID] == revid2
 
+    def test_rebuild(self):
+        # first we index some stuff the slow "on-the-fly" way:
+        item_name = u'foo'
+        item = self.imw[item_name]
+        item.create_revision(dict(name=item_name), StringIO('does not count, different name'))
+        item_name = u'bar'
+        item = self.imw[item_name]
+        item.create_revision(dict(name=item_name), StringIO('1st'))
+        item.create_revision(dict(name=item_name), StringIO('2nd'))
+        # now we remember the index contents built that way:
+        expected_latest_docs = list(self.imw.documents(all_revs=False))
+        expected_all_docs = list(self.imw.documents(all_revs=True))
+        print "latest on-the-fly:", expected_latest_docs
+        print "all on-the-fly:", expected_all_docs
+        # now kill the index and do a full rebuild
+        self.imw.close()
+        self.imw.destroy()
+        self.imw.create()
+        self.imw.rebuild()
+        self.imw.open()
+        # read the index contents built that way:
+        latest_docs = list(self.imw.documents(all_revs=False))
+        all_docs = list(self.imw.documents(all_revs=True))
+        print "latest rebuild:", latest_docs
+        print "all rebuild:", all_docs
+        # should be both the same, order does not matter:
+        assert sorted(expected_all_docs) == sorted(all_docs)
+        assert sorted(expected_latest_docs) == sorted(latest_docs)
 

@@ -248,7 +248,7 @@ class IndexingMiddleware(object):
             doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
             writer.update_document(**doc)
 
-    def rebuild(self, procs=1, limitmb=256):
+    def rebuild(self, tmp=False, procs=1, limitmb=256):
         """
         Add all items/revisions from the backends of this wiki to the index
         (which is expected to have no items/revisions from this wiki yet).
@@ -257,8 +257,9 @@ class IndexingMiddleware(object):
               create, rebuild wiki1, rebuild wiki2, ...
               create (tmp), rebuild wiki1, rebuild wiki2, ..., move
         """
+        index_dir = self.index_dir_tmp if tmp else self.index_dir
         # first we build an index of all we have (so we know what we have)
-        ix_all = open_dir(self.index_dir_tmp, indexname=ALL_REVS)
+        ix_all = open_dir(index_dir, indexname=ALL_REVS)
         if procs == 1:
             # MultiSegmentWriter sometimes has issues and is pointless for procs == 1,
             # so use the simple writer when --procs 1 is given:
@@ -267,7 +268,7 @@ class IndexingMiddleware(object):
             writer = MultiSegmentWriter(ix_all, procs, limitmb)
         with writer as writer:
             for metaid in self.backend:
-                meta, data = backend.get_revision(metaid)
+                meta, data = self.backend.get_revision(metaid)
                 content = convert_to_indexable(meta, data)
                 doc = backend_to_index(meta, content, self.schemas[ALL_REVS], self.wikiname)
                 writer.add_document(**doc)
@@ -351,8 +352,13 @@ class IndexingMiddleware(object):
         with self.get_index(all_revs).searcher() as searcher:
             # Note: callers must consume everything we yield, so the for loop
             # ends and the "with" is left to close the index files.
-            for doc in searcher.documents(**kw):
-                yield doc
+            if kw:
+                for doc in searcher.documents(**kw):
+                    yield doc
+            else: # XXX maybe this would make sense to be whoosh default behaviour for documents()?
+                for doc in searcher.all_stored_fields():
+                    yield doc
+
 
     def document(self, all_revs=False, **kw):
         """
