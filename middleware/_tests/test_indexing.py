@@ -127,7 +127,7 @@ class TestIndexingMiddleware(object):
         assert len(docs) == 1
         assert docs[0][REVID] == rev2.revid
 
-    def test_rebuild(self):
+    def test_index_rebuild(self):
         # first we index some stuff the slow "on-the-fly" way:
         expected_latest_revids = []
         item_name = u'foo'
@@ -169,6 +169,84 @@ class TestIndexingMiddleware(object):
         # should be all the same, order does not matter:
         assert sorted(expected_all_docs) == sorted(all_docs)
         assert sorted(expected_latest_docs) == sorted(latest_docs)
+        assert sorted(latest_revids) == sorted(expected_latest_revids)
+
+    def test_index_update(self):
+        # first we index some stuff the slow "on-the-fly" way:
+        expected_all_revids = []
+        expected_latest_revids = []
+        missing_revids = []
+        item_name = u'updated'
+        item = self.imw[item_name]
+        r = item.create_revision(dict(name=item_name, mtime=1), StringIO('updated 1st'))
+        expected_all_revids.append(r.revid)
+        # we update this item below, so we don't add it to expected_latest_revids
+        #NOTE: we don't have a real "destroy" for revisions yet (that makes them completely vanish)
+        #item_name = u'destroyed'
+        #item = self.imw[item_name]
+        #r = item.create_revision(dict(name=item_name, mtime=1), StringIO('destroyed 1st'))
+        ## we destroy this item below, so we don't add it to expected_all_revids
+        ## we update this item below, so we don't add it to expected_latest_revids
+        item_name = u'stayssame'
+        item = self.imw[item_name]
+        r = item.create_revision(dict(name=item_name, mtime=1), StringIO('stayssame 1st'))
+        expected_all_revids.append(r.revid)
+        # we update this item below, so we don't add it to expected_latest_revids
+        r = item.create_revision(dict(name=item_name, mtime=2), StringIO('stayssame 2nd'))
+        expected_all_revids.append(r.revid)
+        expected_latest_revids.append(r.revid)
+
+        # now build a fresh index at tmp location:
+        self.imw.create(tmp=True)
+        self.imw.rebuild(tmp=True)
+
+        # while the fresh index still sits at the tmp location, we update and add some items.
+        # this will not change the fresh index, but the old index we are still using.
+        item_name = u'updated'
+        item = self.imw[item_name]
+        r = item.create_revision(dict(name=item_name, mtime=2), StringIO('updated 2nd'))
+        expected_all_revids.append(r.revid)
+        expected_latest_revids.append(r.revid)
+        missing_revids.append(r.revid)
+        item_name = u'added'
+        item = self.imw[item_name]
+        r = item.create_revision(dict(name=item_name, mtime=1), StringIO('added 1st'))
+        expected_all_revids.append(r.revid)
+        expected_latest_revids.append(r.revid)
+        missing_revids.append(r.revid)
+        #NOTE: we don't have a real_destroy_revision yet
+        #item_name = u'destroyed'
+        #item = self.imw[item_name]
+        #item.real_destroy_revision(destroy_revid)
+
+        # now switch to the not-quite-fresh-any-more index we have built:
+        self.imw.close()
+        self.imw.move_index()
+        self.imw.open()
+
+        # read the index contents we have now:
+        all_revids = [doc[REVID] for doc in self.imw.documents(all_revs=True)]
+        latest_revids = [doc[REVID] for doc in self.imw.documents(all_revs=False)]
+
+        # this index is outdated:
+        for missing_revid in missing_revids:
+            assert missing_revid not in all_revids
+            assert missing_revid not in latest_revids
+
+        # update the index:
+        self.imw.close()
+        self.imw.update()
+        self.imw.open()
+
+        # read the index contents we have now:
+        all_revids = [doc[REVID] for doc in self.imw.documents(all_revs=True)]
+        latest_revids = [doc[REVID] for doc in self.imw.documents(all_revs=False)]
+
+        # now it should have the previously missing rev and all should be as expected:
+        for missing_revid in missing_revids:
+            assert missing_revid in all_revids
+            assert missing_revid in latest_revids
+        assert sorted(all_revids) == sorted(expected_all_revids)
         assert sorted(latest_revids) == sorted(expected_latest_revids)
 
     def test_revision_contextmanager(self):
