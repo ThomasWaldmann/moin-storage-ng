@@ -250,8 +250,6 @@ class TestIndexingMiddleware(object):
         item = self.imw[item_name]
         item.destroy_revision(destroy_revid)
 
-        #import time; time.sleep(2)
-
         # now switch to the not-quite-fresh-any-more index we have built:
         self.imw.close()
         self.imw.move_index()

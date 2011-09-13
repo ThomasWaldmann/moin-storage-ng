@@ -361,33 +361,19 @@ class IndexingMiddleware(object):
             index_latest = open_dir(index_dir, indexname=LATEST_REVS)
             try:
                 # now update LATEST_REVS index:
-                # determine itemid -> latest_revid mappings:
                 with index_all.searcher() as searcher:
                     tmp = {}
                     for doc in searcher.all_stored_fields():
                         revid, mtime, itemid = doc[REVID], doc[MTIME], doc[ITEMID]
                         tmp.setdefault(itemid, []).append((mtime, revid))
-                    mapping_revids = {}
+                    backend_latest_revids = set()
                     for itemid, mtimes_revids in tmp.items():
-                        revid = sorted(mtimes_revids, reverse=True)[0][1]
-                        mapping_revids[itemid] = revid
-                    backend_revids = dict((itemid, revid) for itemid, revid in mapping_revids.iteritems()
-                                          if revid not in del_revids)
-
+                        latest_revid = sorted(mtimes_revids, reverse=True)[0][1]
+                        backend_latest_revids.add(latest_revid)
                 with index_latest.searcher() as searcher:
-                    ix_revids = dict((doc[ITEMID], doc[REVID]) for doc in searcher.all_stored_fields())
-                #print "backend itemid -> revid", sorted(backend_revids.items())
-                #print "index   itemid -> revid", sorted(ix_revids.items())
-                backend_itemids = set(backend_revids)
-                ix_itemids = set(ix_revids)
-                add_itemids = backend_itemids - ix_itemids
-                upd_itemids = set([itemid for itemid in ix_itemids & backend_itemids
-                                   if backend_revids[itemid] != ix_revids[itemid]])
-                #print "itemids to add   :", add_itemids
-                #print "itemids to update:", upd_itemids
-                for mode, itemids in [('update', upd_itemids), ('add', add_itemids)]:
-                    revids = [backend_revids[itemid] for itemid in itemids]
-                    self._modify_index(index_latest, self.schemas[LATEST_REVS], self.wikiname, revids, mode)
+                    ix_revids = set(doc[REVID] for doc in searcher.all_stored_fields())
+                upd_revids = backend_latest_revids - ix_revids
+                self._modify_index(index_latest, self.schemas[LATEST_REVS], self.wikiname, upd_revids, 'update')
                 self._modify_index(index_latest, self.schemas[LATEST_REVS], self.wikiname, del_revids, 'delete')
             finally:
                 index_latest.close()
