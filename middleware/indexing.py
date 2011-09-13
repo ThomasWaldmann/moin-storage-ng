@@ -324,15 +324,19 @@ class IndexingMiddleware(object):
         try:
             # first update ALL_REVS index:
             backend_revids = set(self.backend)
-            ix_revids = set() # TODO revids, determine from current ALL_REVS index
+            with index_all.searcher():
+                ix_revids = set([doc[REVID] for doc in searcher.all_stored_fields()])
             todo_revids = backend_revids - ix_revids
             self._modify_index(index_all, self.schemas[ALL_REVS], self.wikiname, todo_revids, 'add')
 
             index_latest = open_dir(index_dir, indexname=LATEST_REVS)
             try:
                 # now update LATEST_REVS index:
-                backend_revids = dict() # TODO itemid -> revid, determine from current index_all
-                ix_revids = dict() # TODO itemid -> revid, determine from current index_latest
+                # determine itemid -> revid mappings:
+                with index_all.searcher() as searcher:
+                    backend_revids = dict([(doc[ITEMID], doc[REVID]) for doc in searcher.all_stored_fields()])
+                with index_latest.searcher() as searcher:
+                    ix_revids = dict([(doc[ITEMID], doc[REVID]) for doc in searcher.all_stored_fields()])
                 backend_itemids = set(backend_revids)
                 ix_itemids = set(ix_revids)
                 add_itemids = backend_itemids - ix_itemids
