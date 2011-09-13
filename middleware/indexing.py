@@ -311,7 +311,9 @@ class IndexingMiddleware(object):
         """
         Optimize whoosh index.
         """
-        # TODO
+        # XXX unclear: do we need to close the index before optimizing it? or lock it so it is not used otherwise?
+        for name in self.ix:
+            self.ix[name].optimize()
 
     def get_schema(self, all_revs=False):
         # XXX keep this as is for now, but later just give the index name as param
