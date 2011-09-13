@@ -241,19 +241,19 @@ class IndexingMiddleware(object):
         """
         meta[REVID] = revid
         content = convert_to_indexable(meta, data)
+        doc = backend_to_index(meta, content, self.schemas[ALL_REVS], self.wikiname)
         if async:
             writer = AsyncWriter(self.ix[ALL_REVS])
         else:
             writer = self.ix[ALL_REVS].writer()
         with writer as writer:
-            doc = backend_to_index(meta, content, self.schemas[ALL_REVS], self.wikiname)
             writer.update_document(**doc) # clear_revision() gives us an existing revid
+        doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
         if async:
             writer = AsyncWriter(self.ix[LATEST_REVS])
         else:
             writer = self.ix[LATEST_REVS].writer()
         with writer as writer:
-            doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
             writer.update_document(**doc)
 
     def del_revision(self, revid, async=True):
@@ -300,6 +300,8 @@ class IndexingMiddleware(object):
                     writer.add_document(**doc)
                 elif mode == 'delete':
                     writer.delete_by_term(REVID, revid)
+                else:
+                    raise ValueError("mode must be 'update', 'add' or 'delete', not '%s'" % mode)
 
     def rebuild(self, tmp=False, procs=1, limitmb=256):
         """
@@ -358,18 +360,20 @@ class IndexingMiddleware(object):
             self._modify_index(index_all, self.schemas[ALL_REVS], self.wikiname, add_revids, 'add')
             self._modify_index(index_all, self.schemas[ALL_REVS], self.wikiname, del_revids, 'delete')
 
+            # determine latest revisions in the backend (using the already up-to-date ALL_REVS index)
+            with index_all.searcher() as searcher:
+                tmp = {}
+                for doc in searcher.all_stored_fields():
+                    revid, mtime, itemid = doc[REVID], doc[MTIME], doc[ITEMID]
+                    tmp.setdefault(itemid, []).append((mtime, revid))
+                backend_latest_revids = set()
+                for itemid, mtimes_revids in tmp.items():
+                    latest_revid = sorted(mtimes_revids, reverse=True)[0][1]
+                    backend_latest_revids.add(latest_revid)
+
+            # now update LATEST_REVS index:
             index_latest = open_dir(index_dir, indexname=LATEST_REVS)
             try:
-                # now update LATEST_REVS index:
-                with index_all.searcher() as searcher:
-                    tmp = {}
-                    for doc in searcher.all_stored_fields():
-                        revid, mtime, itemid = doc[REVID], doc[MTIME], doc[ITEMID]
-                        tmp.setdefault(itemid, []).append((mtime, revid))
-                    backend_latest_revids = set()
-                    for itemid, mtimes_revids in tmp.items():
-                        latest_revid = sorted(mtimes_revids, reverse=True)[0][1]
-                        backend_latest_revids.add(latest_revid)
                 with index_latest.searcher() as searcher:
                     ix_revids = set(doc[REVID] for doc in searcher.all_stored_fields())
                 upd_revids = backend_latest_revids - ix_revids
