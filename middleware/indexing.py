@@ -247,7 +247,7 @@ class IndexingMiddleware(object):
             writer = self.ix[ALL_REVS].writer()
         with writer as writer:
             doc = backend_to_index(meta, content, self.schemas[ALL_REVS], self.wikiname)
-            writer.update_document(**doc) # destroy_revision() gives us an existing revid
+            writer.update_document(**doc) # clear_revision() gives us an existing revid
         if async:
             writer = AsyncWriter(self.ix[LATEST_REVS])
         else:
@@ -562,13 +562,14 @@ class Item(object):
         self.current_revision = revid
         return Revision(self, revid)
 
-    def destroy_revision(self, revid, reason=None):
+    def clear_revision(self, revid, reason=None):
         """
         Check if revision with that revid exists (via index) -
-        if yes, destroy revision with that revid.
+        if yes, clear revision with that revid.
         if no, raise RevisionDoesNotExistError.
 
-        Note: we destroy the data and most of the metadata values, but keep "reason" in some rudimentary metadata
+        Note: "clear" means: we dereference the data and reset most of the metadata
+              values, but keep "reason" as COMMENT in some rudimentary metadata.
         """
         backend = self.backend
         meta, data = backend.get_revision(revid) # raises KeyError if rev does not exist
@@ -581,12 +582,12 @@ class Item(object):
         data.seek(0)  # rewind file
         self.indexer.index_revision(revid, meta, data)
         
-    def destroy(self, reason=None):
+    def clear_item(self, reason=None):
         """
-        Destroy all revisions of this item.
+        Clear all revisions of this item.
         """
         for revid in self.iter_revs():
-            self.destroy_revision(revid, reason)
+            self.clear_revision(revid, reason)
 
 
 class Revision(object):

@@ -98,7 +98,7 @@ class MutableBackend(Backend, MutableBackendBase):
 
     def _store_meta(self, meta):
         if REVID not in meta:
-            # Item.destroy_revision calls us with REVID already present
+            # Item.clear_revision calls us with REVID already present
             meta[REVID] = make_uuid()
         metaid = meta[REVID]
         meta = self._serialize(meta)

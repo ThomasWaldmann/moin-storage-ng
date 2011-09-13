@@ -13,7 +13,7 @@ import hashlib
 
 import pytest
 
-from config import NAME, SIZE, ITEMID, REVID, DATAID, HASH_ALGORITHM, CONTENT
+from config import NAME, SIZE, ITEMID, REVID, DATAID, HASH_ALGORITHM, CONTENT, COMMENT
 
 from middleware.indexing import IndexingMiddleware
 from backend.storages import MutableBackend
@@ -50,7 +50,7 @@ class TestIndexingMiddleware(object):
         item = self.imw[item_name]
         assert item # does exist
 
-    def test_destroy_revision(self):
+    def test_clear_revision(self):
         item_name = u'foo'
         data = 'bar'
         item = self.imw[item_name]
@@ -64,12 +64,14 @@ class TestIndexingMiddleware(object):
         revids = list(item.iter_revs())
         assert len(revids) == 1
         assert revid in revids
-        # destroy revision:
-        item.destroy_revision(revid)
-        # check if the revision was destroyed:
+        # clear revision:
+        reason = u'just cleared'
+        item.clear_revision(revid, reason=reason)
+        # check if the revision was cleared:
         item = self.imw[item_name]
         rev = item.get_revision(revid)
         assert rev.meta[NAME] == item_name
+        assert rev.meta[COMMENT] == reason
         assert rev.data.read() == ''
         revids = list(item.iter_revs())
         assert len(revids) == 1 # we still have the revision, cleared
@@ -181,7 +183,7 @@ class TestIndexingMiddleware(object):
         r = item.create_revision(dict(name=item_name, mtime=1), StringIO('updated 1st'))
         expected_all_revids.append(r.revid)
         # we update this item below, so we don't add it to expected_latest_revids
-        #NOTE: we don't have a real "destroy" for revisions yet (that makes them completely vanish)
+        #NOTE: we don't have destroy_revision yet (that makes the rev vanish completely)
         #item_name = u'destroyed'
         #item = self.imw[item_name]
         #r = item.create_revision(dict(name=item_name, mtime=1), StringIO('destroyed 1st'))
@@ -214,10 +216,10 @@ class TestIndexingMiddleware(object):
         expected_all_revids.append(r.revid)
         expected_latest_revids.append(r.revid)
         missing_revids.append(r.revid)
-        #NOTE: we don't have a real_destroy_revision yet
+        #NOTE: we don't have a destroy_revision yet
         #item_name = u'destroyed'
         #item = self.imw[item_name]
-        #item.real_destroy_revision(destroy_revid)
+        #item.destroy_revision(destroy_revid)
 
         # now switch to the not-quite-fresh-any-more index we have built:
         self.imw.close()
