@@ -248,6 +248,27 @@ class IndexingMiddleware(object):
             doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
             writer.update_document(**doc)
 
+    def _modify_index(self, index_dir, indexname, schema, wikiname, revids, mode='add', procs=1, limitmb=256):
+        ix = open_dir(index_dir, indexname=indexname)
+        if procs == 1:
+            # MultiSegmentWriter sometimes has issues and is pointless for procs == 1,
+            # so use the simple writer when --procs 1 is given:
+            writer = ix.writer()
+        else:
+            writer = MultiSegmentWriter(ix, procs, limitmb)
+        with writer as writer:
+            for revid in revids:
+                if mode in ['add', 'update', ]:
+                    meta, data = self.backend.get_revision(revid)
+                    content = convert_to_indexable(meta, data)
+                    doc = backend_to_index(meta, content, schema, wikiname)
+                if mode == 'update':
+                    writer.update_document(**doc)
+                elif mode == 'add':
+                    writer.add_document(**doc)
+                elif mode == 'delete':
+                    writer.delete_by_term(REVID, revid)
+
     def rebuild(self, tmp=False, procs=1, limitmb=256):
         """
         Add all items/revisions from the backends of this wiki to the index
@@ -257,27 +278,11 @@ class IndexingMiddleware(object):
               create, rebuild wiki1, rebuild wiki2, ...
               create (tmp), rebuild wiki1, rebuild wiki2, ..., move
         """
-        def build_index(index_dir, indexname, schema, wikiname, revids, procs=1, limitmb=256):
-            ix = open_dir(index_dir, indexname=indexname)
-            if procs == 1:
-                # MultiSegmentWriter sometimes has issues and is pointless for procs == 1,
-                # so use the simple writer when --procs 1 is given:
-                writer = ix.writer()
-            else:
-                writer = MultiSegmentWriter(ix, procs, limitmb)
-            with writer as writer:
-                for revid in revids:
-                    meta, data = self.backend.get_revision(revid)
-                    content = convert_to_indexable(meta, data)
-                    doc = backend_to_index(meta, content, schema, wikiname)
-                    writer.add_document(**doc)
-
         index_dir = self.index_dir_tmp if tmp else self.index_dir
         # first we build an index of all we have (so we know what we have)
         all_revids = self.backend # the backend is a iterator over all revids
-        build_index(index_dir, ALL_REVS, self.schemas[ALL_REVS], self.wikiname, all_revids, procs, limitmb)
+        self._modify_index(index_dir, ALL_REVS, self.schemas[ALL_REVS], self.wikiname, all_revids, 'add', procs, limitmb)
 
-        
         index = open_dir(self.index_dir, indexname=ALL_REVS)
         latest_revids = []
         with index.searcher() as searcher:
@@ -287,13 +292,39 @@ class IndexingMiddleware(object):
                 # XXX figure how whoosh can order, or get the best
                 vals.sort(key=lambda docid:searcher.stored_fields(docid)[MTIME], reverse=True)
                 latest_revids.append(searcher.stored_fields(vals[0])[REVID])
-        build_index(index_dir, LATEST_REVS, self.schemas[LATEST_REVS], self.wikiname, latest_revids, procs, limitmb)
+        self._modify_index(index_dir, LATEST_REVS, self.schemas[LATEST_REVS], self.wikiname, latest_revids, 'add', procs, limitmb)
 
     def update(self):
         """
         Make sure index reflects current backend state, add missing stuff, remove outdated stuff.
+
+        This is intended to be used:
+        * after a full rebuild that was done at tmp location
+        * after wiki is made read-only or taken offline
+        * after the index was moved to the normal index location
+        
+        Reason: new revisions that were created after the rebuild started might be missing in new index.
         """
-        # TODO
+        index_dir = self.index_dir_tmp if tmp else self.index_dir
+        # first update ALL_REVS index:
+        backend_revids = set(self.backend)
+        ix_revids = set() # TODO revids, determine from current ALL_REVS index
+        todo_revids = backend_revids - ix_revids
+        # we are only adding new revs, no need to set update flag:
+        self._modify_index(index_dir, ALL_REVS, self.schemas[ALL_REVS], self.wikiname, todo_revids, 'add')
+
+        # now update LATEST_REVS index:
+        backend_revids = dict() # TODO itemid -> revid, determine from current ALL_REVS index
+        ix_revids = dict() # TODO itemid -> revid, determine from current LATEST_REVS index
+        backend_itemids = set(backend_revids)
+        ix_itemids = set(ix_revids)
+        add_itemids = backend_itemids - ix_itemids
+        del_itemids = ix_itemids - backend_itemids
+        upd_itemids = set([itemid for itemid in ix_itemids & backend_itemids
+                           if backend_revids[itemid] != ix_revids[itemid]])
+        for mode, itemids in [('update', upd_itemids), ('del', del_itemids), ('add', add_itemids)]:
+            revids = [backend_revids[itemid] for itemid in itemids]
+            self._modify_index(index_dir, LATEST_REVS, self.schemas[LATEST_REVS], self.wikiname, revids, mode)
 
     def optimize_storage(self):
         """
