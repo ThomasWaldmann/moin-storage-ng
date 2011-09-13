@@ -38,6 +38,9 @@ class Backend(BackendBase):
         return key
 
     def __iter__(self):
+        # note: instead of just yielding the relative <path>, yield <path>/<mtime>,
+        # so if the file is updated, the revid will change (and the indexer's
+        # update() method can efficiently update the index).
         for dirpath, dirnames, filenames in os.walk(self.path):
             key = self._mkkey(dirpath)
             if key:
