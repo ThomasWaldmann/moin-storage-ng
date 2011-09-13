@@ -249,6 +249,12 @@ class IndexingMiddleware(object):
             writer.update_document(**doc)
 
     def _modify_index(self, index, schema, wikiname, revids, mode='add', procs=1, limitmb=256):
+        """
+        modify index contents - add, update, delete the indexed documents for all given revids
+
+        Note: mode == 'add' is faster but you need to make sure to not create duplicate
+              documents in the index.
+        """
         if procs == 1:
             # MultiSegmentWriter sometimes has issues and is pointless for procs == 1,
             # so use the simple writer when --procs 1 is given:
@@ -278,12 +284,13 @@ class IndexingMiddleware(object):
               create (tmp), rebuild wiki1, rebuild wiki2, ..., move
         """
         index_dir = self.index_dir_tmp if tmp else self.index_dir
-        # first we build an index of all we have (so we know what we have)
-        all_revids = self.backend # the backend is a iterator over all revids
         index = open_dir(index_dir, indexname=ALL_REVS)
         try:
+            # build an index of all we have (so we know what we have)
+            all_revids = self.backend # the backend is a iterator over all revids
             self._modify_index(index, self.schemas[ALL_REVS], self.wikiname, all_revids, 'add', procs, limitmb)
 
+            # now, using the freshly built index, determine the latest revisions for all items:
             latest_revids = []
             with index.searcher() as searcher:
                 result = searcher.search(Every(), groupedby=ITEMID, sortedby=FieldFacet(MTIME, reverse=True))
@@ -294,6 +301,7 @@ class IndexingMiddleware(object):
                     latest_revids.append(searcher.stored_fields(vals[0])[REVID])
         finally:
             index.close()
+        # now build the index of the latest revisions:
         index = open_dir(index_dir, indexname=LATEST_REVS)
         try:
             self._modify_index(index, self.schemas[LATEST_REVS], self.wikiname, latest_revids, 'add', procs, limitmb)
@@ -316,7 +324,6 @@ class IndexingMiddleware(object):
         backend_revids = set(self.backend)
         ix_revids = set() # TODO revids, determine from current ALL_REVS index
         todo_revids = backend_revids - ix_revids
-        # we are only adding new revs, no need to set update flag:
         index = open_dir(index_dir, indexname=ALL_REVS)
         try:
             self._modify_index(index, self.schemas[ALL_REVS], self.wikiname, todo_revids, 'add')
