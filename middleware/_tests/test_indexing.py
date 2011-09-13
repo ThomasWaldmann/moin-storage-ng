@@ -213,12 +213,12 @@ class TestIndexingMiddleware(object):
         r = item.create_revision(dict(name=item_name, mtime=1), StringIO('updated 1st'))
         expected_all_revids.append(r.revid)
         # we update this item below, so we don't add it to expected_latest_revids
-        #NOTE: we don't have destroy_revision yet (that makes the rev vanish completely)
-        #item_name = u'destroyed'
-        #item = self.imw[item_name]
-        #r = item.create_revision(dict(name=item_name, mtime=1), StringIO('destroyed 1st'))
-        ## we destroy this item below, so we don't add it to expected_all_revids
-        ## we update this item below, so we don't add it to expected_latest_revids
+        item_name = u'destroyed'
+        item = self.imw[item_name]
+        r = item.create_revision(dict(name=item_name, mtime=1), StringIO('destroyed 1st'))
+        destroy_revid = r.revid
+        # we destroy this item below, so we don't add it to expected_all_revids
+        # we destroy this item below, so we don't add it to expected_latest_revids
         item_name = u'stayssame'
         item = self.imw[item_name]
         r = item.create_revision(dict(name=item_name, mtime=1), StringIO('stayssame 1st'))
@@ -246,10 +246,11 @@ class TestIndexingMiddleware(object):
         expected_all_revids.append(r.revid)
         expected_latest_revids.append(r.revid)
         missing_revids.append(r.revid)
-        #NOTE: we don't have a destroy_revision yet
-        #item_name = u'destroyed'
-        #item = self.imw[item_name]
-        #item.destroy_revision(destroy_revid)
+        item_name = u'destroyed'
+        item = self.imw[item_name]
+        item.destroy_revision(destroy_revid)
+
+        #import time; time.sleep(2)
 
         # now switch to the not-quite-fresh-any-more index we have built:
         self.imw.close()

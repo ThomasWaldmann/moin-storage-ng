@@ -353,8 +353,10 @@ class IndexingMiddleware(object):
             backend_revids = set(self.backend)
             with index_all.searcher() as searcher:
                 ix_revids = set([doc[REVID] for doc in searcher.all_stored_fields()])
-            todo_revids = backend_revids - ix_revids
-            self._modify_index(index_all, self.schemas[ALL_REVS], self.wikiname, todo_revids, 'add')
+            add_revids = backend_revids - ix_revids
+            del_revids = ix_revids - backend_revids
+            self._modify_index(index_all, self.schemas[ALL_REVS], self.wikiname, add_revids, 'add')
+            self._modify_index(index_all, self.schemas[ALL_REVS], self.wikiname, del_revids, 'delete')
 
             index_latest = open_dir(index_dir, indexname=LATEST_REVS)
             try:
@@ -363,11 +365,15 @@ class IndexingMiddleware(object):
                 with index_all.searcher() as searcher:
                     tmp = {}
                     for doc in searcher.all_stored_fields():
-                        tmp.setdefault(doc[ITEMID], []).append((doc[MTIME], doc[REVID]))
-                    backend_revids = {}
+                        revid, mtime, itemid = doc[REVID], doc[MTIME], doc[ITEMID]
+                        tmp.setdefault(itemid, []).append((mtime, revid))
+                    mapping_revids = {}
                     for itemid, mtimes_revids in tmp.items():
                         revid = sorted(mtimes_revids, reverse=True)[0][1]
-                        backend_revids[itemid] = revid
+                        mapping_revids[itemid] = revid
+                    backend_revids = dict((itemid, revid) for itemid, revid in mapping_revids.iteritems()
+                                          if revid not in del_revids)
+
                 with index_latest.searcher() as searcher:
                     ix_revids = dict((doc[ITEMID], doc[REVID]) for doc in searcher.all_stored_fields())
                 #print "backend itemid -> revid", sorted(backend_revids.items())
@@ -375,15 +381,14 @@ class IndexingMiddleware(object):
                 backend_itemids = set(backend_revids)
                 ix_itemids = set(ix_revids)
                 add_itemids = backend_itemids - ix_itemids
-                del_itemids = ix_itemids - backend_itemids
                 upd_itemids = set([itemid for itemid in ix_itemids & backend_itemids
                                    if backend_revids[itemid] != ix_revids[itemid]])
                 #print "itemids to add   :", add_itemids
-                #print "itemids to delete:", del_itemids
                 #print "itemids to update:", upd_itemids
-                for mode, itemids in [('update', upd_itemids), ('delete', del_itemids), ('add', add_itemids)]:
+                for mode, itemids in [('update', upd_itemids), ('add', add_itemids)]:
                     revids = [backend_revids[itemid] for itemid in itemids]
                     self._modify_index(index_latest, self.schemas[LATEST_REVS], self.wikiname, revids, mode)
+                self._modify_index(index_latest, self.schemas[LATEST_REVS], self.wikiname, del_revids, 'delete')
             finally:
                 index_latest.close()
         finally:
