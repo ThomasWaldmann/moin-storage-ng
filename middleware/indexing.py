@@ -320,32 +320,32 @@ class IndexingMiddleware(object):
         Reason: new revisions that were created after the rebuild started might be missing in new index.
         """
         index_dir = self.index_dir_tmp if tmp else self.index_dir
-        # first update ALL_REVS index:
-        backend_revids = set(self.backend)
-        ix_revids = set() # TODO revids, determine from current ALL_REVS index
-        todo_revids = backend_revids - ix_revids
-        index = open_dir(index_dir, indexname=ALL_REVS)
+        index_all = open_dir(index_dir, indexname=ALL_REVS)
         try:
-            self._modify_index(index, self.schemas[ALL_REVS], self.wikiname, todo_revids, 'add')
-        finally:
-            index.close()
+            # first update ALL_REVS index:
+            backend_revids = set(self.backend)
+            ix_revids = set() # TODO revids, determine from current ALL_REVS index
+            todo_revids = backend_revids - ix_revids
+            self._modify_index(index_all, self.schemas[ALL_REVS], self.wikiname, todo_revids, 'add')
 
-        # now update LATEST_REVS index:
-        backend_revids = dict() # TODO itemid -> revid, determine from current ALL_REVS index
-        ix_revids = dict() # TODO itemid -> revid, determine from current LATEST_REVS index
-        backend_itemids = set(backend_revids)
-        ix_itemids = set(ix_revids)
-        add_itemids = backend_itemids - ix_itemids
-        del_itemids = ix_itemids - backend_itemids
-        upd_itemids = set([itemid for itemid in ix_itemids & backend_itemids
-                           if backend_revids[itemid] != ix_revids[itemid]])
-        index = open_dir(index_dir, indexname=LATEST_REVS)
-        try:
-            for mode, itemids in [('update', upd_itemids), ('del', del_itemids), ('add', add_itemids)]:
-                revids = [backend_revids[itemid] for itemid in itemids]
-                self._modify_index(index, self.schemas[LATEST_REVS], self.wikiname, revids, mode)
+            index_latest = open_dir(index_dir, indexname=LATEST_REVS)
+            try:
+                # now update LATEST_REVS index:
+                backend_revids = dict() # TODO itemid -> revid, determine from current index_all
+                ix_revids = dict() # TODO itemid -> revid, determine from current index_latest
+                backend_itemids = set(backend_revids)
+                ix_itemids = set(ix_revids)
+                add_itemids = backend_itemids - ix_itemids
+                del_itemids = ix_itemids - backend_itemids
+                upd_itemids = set([itemid for itemid in ix_itemids & backend_itemids
+                                   if backend_revids[itemid] != ix_revids[itemid]])
+                for mode, itemids in [('update', upd_itemids), ('del', del_itemids), ('add', add_itemids)]:
+                    revids = [backend_revids[itemid] for itemid in itemids]
+                    self._modify_index(index_latest, self.schemas[LATEST_REVS], self.wikiname, revids, mode)
+            finally:
+                index_latest.close()
         finally:
-            index.close()
+            index_all.close()
 
     def optimize_storage(self):
         """
