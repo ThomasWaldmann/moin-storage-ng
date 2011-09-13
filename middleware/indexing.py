@@ -303,6 +303,40 @@ class IndexingMiddleware(object):
                 else:
                     raise ValueError("mode must be 'update', 'add' or 'delete', not '%s'" % mode)
 
+    def _find_latest_revids1(self, index):
+        """
+        find the latest revids from the backend
+
+        :param index: an up-to-date and open ALL_REVS index
+        :returns: a list of the latest revids
+        """
+        # now, using the freshly built index, determine the latest revisions for all items:
+        with index.searcher() as searcher:
+            result = searcher.search(Every(), groupedby=ITEMID, sortedby=FieldFacet(MTIME, reverse=True))
+            by_item = result.groups(ITEMID)
+            latest_revids = []
+            for _, vals in by_item.items():
+                # XXX figure how whoosh can order, or get the best
+                vals.sort(key=lambda docid: searcher.stored_fields(docid)[MTIME], reverse=True)
+                latest_revid = searcher.stored_fields(vals[0])[REVID]
+                latest_revids.append(latest_revid)
+        return latest_revids
+
+    def _find_latest_revids2(self, index):
+        # XXX alternative implementation - which is better?
+        with index.searcher() as searcher:
+            item_revids = {}
+            for doc in searcher.all_stored_fields():
+                revid, mtime, itemid = doc[REVID], doc[MTIME], doc[ITEMID]
+                item_revids.setdefault(itemid, []).append((mtime, revid))
+            latest_revids = []
+            for itemid, mtimes_revids in item_revids.items():
+                latest_revid = sorted(mtimes_revids, reverse=True)[0][1]
+                latest_revids.append(latest_revid)
+        return latest_revids
+
+    _find_latest_revids = _find_latest_revids1
+
     def rebuild(self, tmp=False, procs=1, limitmb=256):
         """
         Add all items/revisions from the backends of this wiki to the index
@@ -318,16 +352,7 @@ class IndexingMiddleware(object):
             # build an index of all we have (so we know what we have)
             all_revids = self.backend # the backend is a iterator over all revids
             self._modify_index(index, self.schemas[ALL_REVS], self.wikiname, all_revids, 'add', procs, limitmb)
-
-            # now, using the freshly built index, determine the latest revisions for all items:
-            latest_revids = []
-            with index.searcher() as searcher:
-                result = searcher.search(Every(), groupedby=ITEMID, sortedby=FieldFacet(MTIME, reverse=True))
-                by_item = result.groups(ITEMID)
-                for _, vals in by_item.items():
-                    # XXX figure how whoosh can order, or get the best
-                    vals.sort(key=lambda docid:searcher.stored_fields(docid)[MTIME], reverse=True)
-                    latest_revids.append(searcher.stored_fields(vals[0])[REVID])
+            latest_revids = self._find_latest_revids(index)
         finally:
             index.close()
         # now build the index of the latest revisions:
@@ -360,29 +385,19 @@ class IndexingMiddleware(object):
             self._modify_index(index_all, self.schemas[ALL_REVS], self.wikiname, add_revids, 'add')
             self._modify_index(index_all, self.schemas[ALL_REVS], self.wikiname, del_revids, 'delete')
 
-            # determine latest revisions in the backend (using the already up-to-date ALL_REVS index)
-            with index_all.searcher() as searcher:
-                tmp = {}
-                for doc in searcher.all_stored_fields():
-                    revid, mtime, itemid = doc[REVID], doc[MTIME], doc[ITEMID]
-                    tmp.setdefault(itemid, []).append((mtime, revid))
-                backend_latest_revids = set()
-                for itemid, mtimes_revids in tmp.items():
-                    latest_revid = sorted(mtimes_revids, reverse=True)[0][1]
-                    backend_latest_revids.add(latest_revid)
-
-            # now update LATEST_REVS index:
-            index_latest = open_dir(index_dir, indexname=LATEST_REVS)
-            try:
-                with index_latest.searcher() as searcher:
-                    ix_revids = set(doc[REVID] for doc in searcher.all_stored_fields())
-                upd_revids = backend_latest_revids - ix_revids
-                self._modify_index(index_latest, self.schemas[LATEST_REVS], self.wikiname, upd_revids, 'update')
-                self._modify_index(index_latest, self.schemas[LATEST_REVS], self.wikiname, del_revids, 'delete')
-            finally:
-                index_latest.close()
+            backend_latest_revids = set(self._find_latest_revids(index_all))
         finally:
             index_all.close()
+        index_latest = open_dir(index_dir, indexname=LATEST_REVS)
+        try:
+            # now update LATEST_REVS index:
+            with index_latest.searcher() as searcher:
+                ix_revids = set(doc[REVID] for doc in searcher.all_stored_fields())
+            upd_revids = backend_latest_revids - ix_revids
+            self._modify_index(index_latest, self.schemas[LATEST_REVS], self.wikiname, upd_revids, 'update')
+            self._modify_index(index_latest, self.schemas[LATEST_REVS], self.wikiname, del_revids, 'delete')
+        finally:
+            index_latest.close()
 
     def optimize_storage(self):
         """
