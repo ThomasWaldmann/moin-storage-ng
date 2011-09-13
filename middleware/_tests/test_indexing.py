@@ -128,49 +128,48 @@ class TestIndexingMiddleware(object):
         assert docs[0][REVID] == rev2.revid
 
     def test_rebuild(self):
-        expected_latest_revids = []
-        
         # first we index some stuff the slow "on-the-fly" way:
+        expected_latest_revids = []
         item_name = u'foo'
         item = self.imw[item_name]
         r = item.create_revision(dict(name=item_name, mtime=1), StringIO('does not count, different name'))
-
         expected_latest_revids.append(r.revid)
-
         item_name = u'bar'
         item = self.imw[item_name]
-        #XXX: mtime/parents
         item.create_revision(dict(name=item_name, mtime=1), StringIO('1st'))
         r = item.create_revision(dict(name=item_name, mtime=2), StringIO('2nd'))
-
         expected_latest_revids.append(r.revid)
-        expected_latest_revids.sort()
+
         # now we remember the index contents built that way:
         expected_latest_docs = list(self.imw.documents(all_revs=False))
         expected_all_docs = list(self.imw.documents(all_revs=True))
+
         print "*** all on-the-fly:"
         self.imw.dump(all_revs=True)
         print "*** latest on-the-fly:"
         self.imw.dump(all_revs=False)
+
         # now kill the index and do a full rebuild
         self.imw.close()
         self.imw.destroy()
         self.imw.create()
         self.imw.rebuild()
         self.imw.open()
+
         # read the index contents built that way:
-        latest_docs = list(self.imw.documents(all_revs=False))
         all_docs = list(self.imw.documents(all_revs=True))
+        latest_docs = list(self.imw.documents(all_revs=False))
+        latest_revids = [doc[REVID] for doc in latest_docs]
+
         print "*** all rebuilt:"
         self.imw.dump(all_revs=True)
         print "*** latest rebuilt:"
         self.imw.dump(all_revs=False)
-        # should be both the same, order does not matter:
+
+        # should be all the same, order does not matter:
         assert sorted(expected_all_docs) == sorted(all_docs)
         assert sorted(expected_latest_docs) == sorted(latest_docs)
-
-        latest_revids = sorted(x[REVID] for x in latest_docs)
-        assert latest_revids == expected_latest_revids
+        assert sorted(latest_revids) == sorted(expected_latest_revids)
 
     def test_revision_contextmanager(self):
         # check if rev.data is closed after leaving the with-block
