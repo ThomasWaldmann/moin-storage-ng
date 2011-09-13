@@ -7,7 +7,7 @@
 MoinMoin - indexing middleware
 
 The backends and storages moin uses are rather simple, it is mostly just a
-unsorted / unordered bunch of meta and data with iteration.
+unsorted / unordered bunch of revisions (meta and data) with iteration.
 
 The indexer middleware adds the needed power: after all metadata and data
 is indexed, we can do all sorts of operations on the indexer level:
@@ -16,8 +16,6 @@ is indexed, we can do all sorts of operations on the indexer level:
 * selecting
 * listing
 """
-
-# TODO: no "routing" yet, all is expected to be in one backend.
 
 
 from __future__ import absolute_import, division
@@ -121,9 +119,8 @@ class IndexingMiddleware(object):
             CONTENTTYPE: ID(stored=True),
             # unmodified list of TAGS from metadata
             TAGS: ID(stored=True),
-            # LANGUAGE from metadata
             LANGUAGE: ID(stored=True),
-            # USERID from metadata
+            # USERID from metadata TODO: -> user ITEMID
             USERID: ID(stored=True),
             # ADDRESS from metadata
             ADDRESS: ID(stored=True),
@@ -153,15 +150,12 @@ class IndexingMiddleware(object):
         latest_revs_fields.update(**common_fields)
 
         userprofile_fields = {
-            # EMAIL from user profile metadata
             EMAIL: ID(unique=True, stored=True),
-            # OPENID from user profile metadata
             OPENID: ID(unique=True, stored=True),
         }
         latest_revs_fields.update(**userprofile_fields)
 
         all_revs_fields = {
-            # UUID from metadata
             ITEMID: ID(stored=True),
         }
         all_revs_fields.update(**common_fields)
@@ -289,7 +283,7 @@ class IndexingMiddleware(object):
             result = searcher.search(Every(), groupedby=ITEMID, sortedby=FieldFacet(MTIME, reverse=True))
             by_item = result.groups(ITEMID)
             for _, vals in by_item.items():
-                #XXX: figure how whoosh can order, or get the best
+                # XXX figure how whoosh can order, or get the best
                 vals.sort(key=lambda docid:searcher.stored_fields(docid)[MTIME], reverse=True)
                 latest_revids.append(searcher.stored_fields(vals[0])[REVID])
         build_index(index_dir, LATEST_REVS, self.schemas[LATEST_REVS], self.wikiname, latest_revids, procs, limitmb)
@@ -370,7 +364,6 @@ class IndexingMiddleware(object):
                 for doc in searcher.all_stored_fields():
                     yield doc
 
-
     def document(self, all_revs=False, **kw):
         """
         Return document matching the kw args.
@@ -401,7 +394,7 @@ class Item(object):
     def __init__(self, router, item_name):
         self.router = router
         self.item_name = item_name
-        self.backend = self.router.backend # TODO was: backend_for_path(itemname)
+        self.backend = self.router.backend
         doc = self.router.document(all_revs=False, name=item_name)
         if doc:
             self.itemid = doc[ITEMID]
