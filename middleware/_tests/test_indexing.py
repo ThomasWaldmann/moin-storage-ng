@@ -50,6 +50,31 @@ class TestIndexingMiddleware(object):
         item = self.imw[item_name]
         assert item # does exist
 
+    def test_destroy_revision(self):
+        item_name = u'foo'
+        data = 'bar'
+        item = self.imw[item_name]
+        rev = item.create_revision(dict(name=item_name), StringIO(data))
+        revid = rev.revid
+        # check if we have the revision now:
+        item = self.imw[item_name]
+        rev = item.get_revision(revid)
+        assert rev.meta[NAME] == item_name
+        assert rev.data.read() == data
+        revids = list(item.iter_revs())
+        assert len(revids) == 1
+        assert revid in revids
+        # destroy revision:
+        item.destroy_revision(revid)
+        # check if the revision was destroyed:
+        item = self.imw[item_name]
+        rev = item.get_revision(revid)
+        assert rev.meta[NAME] == item_name
+        assert rev.data.read() == ''
+        revids = list(item.iter_revs())
+        assert len(revids) == 1 # we still have the revision, cleared
+        assert revid in revids # it is still same revid
+
     def test_all_revisions(self):
         item_name = u'foo'
         item = self.imw[item_name]

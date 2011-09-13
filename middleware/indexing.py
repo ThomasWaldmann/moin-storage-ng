@@ -24,6 +24,7 @@ import os
 import shutil
 import itertools
 import time, datetime
+from StringIO import StringIO
 
 from uuid import uuid4
 
@@ -242,7 +243,7 @@ class IndexingMiddleware(object):
         content = convert_to_indexable(meta, data)
         with AsyncWriter(self.ix[ALL_REVS]) as writer:
             doc = backend_to_index(meta, content, self.schemas[ALL_REVS], self.wikiname)
-            writer.add_document(**doc)
+            writer.update_document(**doc) # destroy_revision() gives us an existing revid
         with AsyncWriter(self.ix[LATEST_REVS]) as writer:
             doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
             writer.update_document(**doc)
@@ -474,7 +475,16 @@ class Item(object):
 
         Note: we destroy the data and most of the metadata values, but keep "reason" in some rudimentary metadata
         """
-        # TODO (data reference?)
+        backend = self.backend
+        meta, data = backend.get_revision(revid) # raises KeyError if rev does not exist
+        meta[COMMENT] = reason or u'destroyed'
+        # TODO cleanup more metadata
+        data = StringIO('') # nothing to see there
+        revid = backend.store_revision(meta, data)
+        data.seek(0)  # rewind file
+        self.indexer.index_revision(revid, meta, data)
+        # TODO we just stored new (empty) data for this revision, but the old
+        # data file is still in storage (not referenced by THIS revision any more)
         
     def destroy(self, reason=None):
         """

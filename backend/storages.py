@@ -97,8 +97,10 @@ class MutableBackend(Backend, MutableBackendBase):
         return meta_str
 
     def _store_meta(self, meta):
-        metaid = make_uuid()
-        meta[REVID] = metaid
+        if REVID not in meta:
+            # Item.destroy_revision calls us with REVID already present
+            meta[REVID] = make_uuid()
+        metaid = meta[REVID]
         meta = self._serialize(meta)
         # XXX Idea: we could check the type the store wants from us:
         # if it is a str/bytes (BytesStorage), just use meta "as is",
