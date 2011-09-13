@@ -248,14 +248,13 @@ class IndexingMiddleware(object):
             doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
             writer.update_document(**doc)
 
-    def _modify_index(self, index_dir, indexname, schema, wikiname, revids, mode='add', procs=1, limitmb=256):
-        ix = open_dir(index_dir, indexname=indexname)
+    def _modify_index(self, index, schema, wikiname, revids, mode='add', procs=1, limitmb=256):
         if procs == 1:
             # MultiSegmentWriter sometimes has issues and is pointless for procs == 1,
             # so use the simple writer when --procs 1 is given:
-            writer = ix.writer()
+            writer = index.writer()
         else:
-            writer = MultiSegmentWriter(ix, procs, limitmb)
+            writer = MultiSegmentWriter(index, procs, limitmb)
         with writer as writer:
             for revid in revids:
                 if mode in ['add', 'update', ]:
@@ -281,18 +280,25 @@ class IndexingMiddleware(object):
         index_dir = self.index_dir_tmp if tmp else self.index_dir
         # first we build an index of all we have (so we know what we have)
         all_revids = self.backend # the backend is a iterator over all revids
-        self._modify_index(index_dir, ALL_REVS, self.schemas[ALL_REVS], self.wikiname, all_revids, 'add', procs, limitmb)
+        index = open_dir(index_dir, indexname=ALL_REVS)
+        try:
+            self._modify_index(index, self.schemas[ALL_REVS], self.wikiname, all_revids, 'add', procs, limitmb)
 
-        index = open_dir(self.index_dir, indexname=ALL_REVS)
-        latest_revids = []
-        with index.searcher() as searcher:
-            result = searcher.search(Every(), groupedby=ITEMID, sortedby=FieldFacet(MTIME, reverse=True))
-            by_item = result.groups(ITEMID)
-            for _, vals in by_item.items():
-                # XXX figure how whoosh can order, or get the best
-                vals.sort(key=lambda docid:searcher.stored_fields(docid)[MTIME], reverse=True)
-                latest_revids.append(searcher.stored_fields(vals[0])[REVID])
-        self._modify_index(index_dir, LATEST_REVS, self.schemas[LATEST_REVS], self.wikiname, latest_revids, 'add', procs, limitmb)
+            latest_revids = []
+            with index.searcher() as searcher:
+                result = searcher.search(Every(), groupedby=ITEMID, sortedby=FieldFacet(MTIME, reverse=True))
+                by_item = result.groups(ITEMID)
+                for _, vals in by_item.items():
+                    # XXX figure how whoosh can order, or get the best
+                    vals.sort(key=lambda docid:searcher.stored_fields(docid)[MTIME], reverse=True)
+                    latest_revids.append(searcher.stored_fields(vals[0])[REVID])
+        finally:
+            index.close()
+        index = open_dir(index_dir, indexname=LATEST_REVS)
+        try:
+            self._modify_index(index, self.schemas[LATEST_REVS], self.wikiname, latest_revids, 'add', procs, limitmb)
+        finally:
+            index.close()
 
     def update(self):
         """
@@ -311,7 +317,11 @@ class IndexingMiddleware(object):
         ix_revids = set() # TODO revids, determine from current ALL_REVS index
         todo_revids = backend_revids - ix_revids
         # we are only adding new revs, no need to set update flag:
-        self._modify_index(index_dir, ALL_REVS, self.schemas[ALL_REVS], self.wikiname, todo_revids, 'add')
+        index = open_dir(index_dir, indexname=ALL_REVS)
+        try:
+            self._modify_index(index, self.schemas[ALL_REVS], self.wikiname, todo_revids, 'add')
+        finally:
+            index.close()
 
         # now update LATEST_REVS index:
         backend_revids = dict() # TODO itemid -> revid, determine from current ALL_REVS index
@@ -322,9 +332,13 @@ class IndexingMiddleware(object):
         del_itemids = ix_itemids - backend_itemids
         upd_itemids = set([itemid for itemid in ix_itemids & backend_itemids
                            if backend_revids[itemid] != ix_revids[itemid]])
-        for mode, itemids in [('update', upd_itemids), ('del', del_itemids), ('add', add_itemids)]:
-            revids = [backend_revids[itemid] for itemid in itemids]
-            self._modify_index(index_dir, LATEST_REVS, self.schemas[LATEST_REVS], self.wikiname, revids, mode)
+        index = open_dir(index_dir, indexname=LATEST_REVS)
+        try:
+            for mode, itemids in [('update', upd_itemids), ('del', del_itemids), ('add', add_itemids)]:
+                revids = [backend_revids[itemid] for itemid in itemids]
+                self._modify_index(index, self.schemas[LATEST_REVS], self.wikiname, revids, mode)
+        finally:
+            index.close()
 
     def optimize_storage(self):
         """
