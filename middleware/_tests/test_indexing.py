@@ -77,6 +77,36 @@ class TestIndexingMiddleware(object):
         assert len(revids) == 1 # we still have the revision, cleared
         assert revid in revids # it is still same revid
 
+    def test_destroy_revision(self):
+        item_name = u'foo'
+        item = self.imw[item_name]
+        rev = item.create_revision(dict(name=item_name), StringIO('bar'))
+        revid_destroyed = rev.revid
+        rev = item.create_revision(dict(name=item_name), StringIO('baz'))
+        revid_left = rev.revid
+        # destroy revision:
+        item.destroy_revision(revid_destroyed)
+        # check if the revision was destroyed:
+        item = self.imw[item_name]
+        with pytest.raises(KeyError):
+            item.get_revision(revid_destroyed)
+        revs = list(item.iter_revs())
+        assert revs == [revid_left]
+
+    def test_destroy_item(self):
+        revids = []
+        item_name = u'foo'
+        item = self.imw[item_name]
+        rev = item.create_revision(dict(name=item_name), StringIO('bar'))
+        revids.append(rev.revid)
+        rev = item.create_revision(dict(name=item_name), StringIO('baz'))
+        revids.append(rev.revid)
+        # destroy item:
+        item.destroy_item()
+        # check if the item was destroyed:
+        item = self.imw[item_name]
+        assert not item # does not exist
+
     def test_all_revisions(self):
         item_name = u'foo'
         item = self.imw[item_name]

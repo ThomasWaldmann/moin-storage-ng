@@ -256,6 +256,25 @@ class IndexingMiddleware(object):
             doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
             writer.update_document(**doc)
 
+    def del_revision(self, revid, async=True):
+        """
+        Delete a single revision from indexes.
+        """
+        if async:
+            writer = AsyncWriter(self.ix[ALL_REVS])
+        else:
+            writer = self.ix[ALL_REVS].writer()
+        with writer as writer:
+            writer.delete_by_term(REVID, revid)
+        if async:
+            writer = AsyncWriter(self.ix[LATEST_REVS])
+        else:
+            writer = self.ix[LATEST_REVS].writer()
+        with writer as writer:
+            # TODO: if the revid was in the latest revs index, we remove it by
+            # this. we should add whatever is the latest rev now.
+            writer.delete_by_term(REVID, revid)
+
     def _modify_index(self, index, schema, wikiname, revids, mode='add', procs=1, limitmb=256):
         """
         modify index contents - add, update, delete the indexed documents for all given revids
@@ -568,8 +587,8 @@ class Item(object):
         if yes, clear revision with that revid.
         if no, raise RevisionDoesNotExistError.
 
-        Note: "clear" means: we dereference the data and reset most of the metadata
-              values, but keep "reason" as COMMENT in some rudimentary metadata.
+        Note: "clear" means: we modify the revision in the backend, so most metadata
+              values are clear, the reason is put into the comment and the data is empty.
         """
         backend = self.backend
         meta, data = backend.get_revision(revid) # raises KeyError if rev does not exist
@@ -588,6 +607,24 @@ class Item(object):
         """
         for revid in self.iter_revs():
             self.clear_revision(revid, reason)
+
+    def destroy_revision(self, revid):
+        """
+        Check if revision with that revid exists (via index) -
+        if yes, destroy revision with that revid.
+        if no, raise RevisionDoesNotExistError.
+
+        Note: "destroy" means: we delete the revision from the backend
+        """
+        self.backend.del_revision(revid)
+        self.indexer.del_revision(revid)
+        
+    def destroy_item(self):
+        """
+        Destroy all revisions of this item.
+        """
+        for revid in self.iter_revs():
+            self.destroy_revision(revid)
 
 
 class Revision(object):
