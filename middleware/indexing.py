@@ -391,11 +391,11 @@ class IndexingMiddleware(object):
 
 
 class Item(object):
-    def __init__(self, router, item_name):
-        self.router = router
+    def __init__(self, indexer, item_name):
+        self.indexer = indexer
         self.item_name = item_name
-        self.backend = self.router.backend
-        doc = self.router.document(all_revs=False, name=item_name)
+        self.backend = self.indexer.backend
+        doc = self.indexer.document(all_revs=False, name=item_name)
         if doc:
             self.itemid = doc[ITEMID]
             self.current_revision = doc[REVID]
@@ -404,21 +404,21 @@ class Item(object):
             self.current_revision = None
 
     @classmethod
-    def create(cls, router, item_name):
+    def create(cls, indexer, item_name):
         """
         Create a new item and return it, raise exception if it already exists.
         """
-        item = cls(router, item_name)
+        item = cls(indexer, item_name)
         if not item:
             return item
         raise ItemAlreadyExists(item_name)
         
     @classmethod
-    def existing(cls, router, item_name):
+    def existing(cls, indexer, item_name):
         """
         Get an existing item and return it, raise exception if it does not exist.
         """
-        item = cls(router, item_name)
+        item = cls(indexer, item_name)
         if item:
             return item
         raise ItemDoesNotExist(item_name)
@@ -434,7 +434,7 @@ class Item(object):
         Iterate over revids belonging to this item (use index).
         """
         if self:
-            for doc in self.router.documents(all_revs=True, itemid=self.itemid):
+            for doc in self.indexer.documents(all_revs=True, itemid=self.itemid):
                 yield doc[REVID]
 
     def __getitem__(self, revid):
@@ -459,11 +459,10 @@ class Item(object):
         if self.itemid is None:
             self.itemid = make_uuid()
         meta[ITEMID] = self.itemid
-        # later: backend_name, backend = self.router.backend_rest(self.name)
         backend = self.backend
         revid = backend.store_revision(meta, data)
         data.seek(0)  # rewind file
-        self.router.index_revision(revid, meta, data)
+        self.indexer.index_revision(revid, meta, data)
         self.current_revision = revid
         return Revision(self, revid)
 
