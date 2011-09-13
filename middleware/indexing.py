@@ -295,6 +295,24 @@ class IndexingMiddleware(object):
         """
         # TODO
 
+    def optimize_storage(self):
+        """
+        Optimize storage / collect garbage to safe space:
+
+        * trash bin: empty it? use trash_max_age?
+        * user profiles: only keep latest revision?
+        * normal wiki items: keep by max_revisions_count / max_age
+        * deduplicate data (determine dataids with same hash, fix references to point to one of them)
+        * remove unreferenced dataids (destroyed revisions, deduplicated stuff)
+        """
+        # TODO
+
+    def optimize_index(self):
+        """
+        Optimize whoosh index.
+        """
+        # TODO
+
     def get_schema(self, all_revs=False):
         # XXX keep this as is for now, but later just give the index name as param
         name = ALL_REVS if all_revs else LATEST_REVS
@@ -481,10 +499,10 @@ class Item(object):
         # TODO cleanup more metadata
         data = StringIO('') # nothing to see there
         revid = backend.store_revision(meta, data)
+        # Note: we just stored new (empty) data for this revision, but the old
+        # data file is still in storage (not referenced by THIS revision any more)
         data.seek(0)  # rewind file
         self.indexer.index_revision(revid, meta, data)
-        # TODO we just stored new (empty) data for this revision, but the old
-        # data file is still in storage (not referenced by THIS revision any more)
         
     def destroy(self, reason=None):
         """
