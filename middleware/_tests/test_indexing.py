@@ -43,14 +43,7 @@ class TestIndexingMiddleware(object):
         item = self.imw[u'foo']
         assert not item # does not exist
 
-    def test_existing_item(self):
-        item_name = u'foo'
-        item = self.imw[item_name]
-        item.create_revision(dict(name=item_name), StringIO('bar'))
-        item = self.imw[item_name]
-        assert item # does exist
-
-    def test_clear_revision(self):
+    def test_create_revision(self):
         item_name = u'foo'
         data = 'bar'
         item = self.imw[item_name]
@@ -58,12 +51,19 @@ class TestIndexingMiddleware(object):
         revid = rev.revid
         # check if we have the revision now:
         item = self.imw[item_name]
+        assert item # does exist
         rev = item.get_revision(revid)
         assert rev.meta[NAME] == item_name
         assert rev.data.read() == data
         revids = list(item.iter_revs())
-        assert len(revids) == 1
-        assert revid in revids
+        assert revids == [revid]
+
+    def test_clear_revision(self):
+        item_name = u'foo'
+        data = 'bar'
+        item = self.imw[item_name]
+        rev = item.create_revision(dict(name=item_name), StringIO(data))
+        revid = rev.revid
         # clear revision:
         reason = u'just cleared'
         item.clear_revision(revid, reason=reason)
