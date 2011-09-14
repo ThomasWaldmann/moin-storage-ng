@@ -89,6 +89,7 @@ This is a backend that ties together 2 key/value storages:
 Already implemented key/value storages:
 
 * fs (stores into filesystem)
+* sqlite (stores into sqlite3 table, single db file in the filesystem)
 * memory (stores into RAM, non-persistent!)
 
 Likely one can also use many other existing k/v stores with very little code.
