@@ -360,5 +360,27 @@ class TestProtectedIndexingMiddleware(object):
         item = self.imw[item_name]
         with pytest.raises(AccessDenied):
             r = item[revid_secret]
+    
+    def test_perf_create_only(self):
+        pytest.skip("usually we do no performance tests")
+        # determine create revisions performance
+        # for the memory backend we use, this is likely mostly building the indexes
+        item_name = u'foo'
+        item = self.imw[item_name]
+        for i in xrange(100):
+            item.create_revision(dict(name=item_name, acl=u'joe:create joe:read'), StringIO('some content'))
 
+    def test_perf_create_read(self):
+        pytest.skip("usually we do no performance tests")
+        # determine create + read revisions performance
+        # for the memory backend we use, this is likely mostly building the indexes and
+        # doing index lookups name -> itemid, itemid -> revids list
+        item_name = u'foo'
+        item = self.imw[item_name]
+        for i in xrange(100):
+            item.create_revision(dict(name=item_name, acl=u'joe:create joe:read'), StringIO('rev number %d' % i))
+        for revid in item.iter_revs():
+            r = item[revid]
+            #print r.meta
+            #print r.data.read()
 
