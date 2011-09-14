@@ -2,13 +2,14 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - sqlite3 storage
+MoinMoin - sqlite3 key/value storage (optionally with zlib/"gzip" compression)
 """
 
 
 from __future__ import absolute_import, division
 
 from StringIO import StringIO
+import zlib
 from sqlite3 import *
 
 from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
@@ -17,9 +18,21 @@ class _Storage(MutableStorageBase):
     """
     A simple sqlite3 based storage.
     """
-    def __init__(self, db_name, table_name):
+    def __init__(self, db_name, table_name, compression_level=0):
+        """
+        Just store the params.
+
+        :param db_name: database (file)name
+        :param table_name: table to use for this storage (we only touch this table)
+        :param compression_level: zlib compression level
+                                  0 = no compr, 1 = fast/small, ..., 9 = slow/smaller
+                                  we recommend 0 for low cpu usage, 1 for low disk space usage
+                                  high compression levels don't give much better compression,
+                                  but use lots of cpu (e.g. 6 is about 2x more cpu than 1).
+        """
         self.db_name = db_name
         self.table_name = table_name
+        self.compression_level = compression_level
 
     def create(self):
         conn = connect(self.db_name)
@@ -46,15 +59,32 @@ class _Storage(MutableStorageBase):
         with self.conn:
             self.conn.execute('delete from %s where key=?' % self.table_name, (key, ))
 
+    def _compress(self, value):
+        if self.compression_level:
+            value = zlib.compress(value, self.compression_level)
+        # we store some magic start/end markers and the compression level,
+        # so we can later uncompress correctly (or rather NOT uncompress if level == 0)
+        return "{{{GZ%(level)d|%(value)s}}}" % dict(level=self.compression_level, value=value)
+
+    def _decompress(self, value):
+        if not value.startswith("{{{GZ") or not value.endswith("}}}"):
+            raise ValueError("Invalid data format in database.")
+        compression_level = int(value[5])
+        value = value[7:-3]
+        if compression_level:
+            value = zlib.decompress(value)
+        return value
 
 class BytesStorage(_Storage, BytesMutableStorageBase):
     def __getitem__(self, key):
         rows = list(self.conn.execute("select value from %s where key=?" % self.table_name, (key, )))
         if not rows:
             raise KeyError(key)
-        return str(rows[0]['value'])
+        value = str(rows[0]['value'])
+        return self._decompress(value)
 
     def __setitem__(self, key, value):
+        value = self._compress(value)
         with self.conn:
             self.conn.execute('insert into %s values (?, ?)' % self.table_name, (key, buffer(value)))
 
@@ -64,10 +94,12 @@ class FileStorage(_Storage, FileMutableStorageBase):
         rows = list(self.conn.execute("select value from %s where key=?" % self.table_name, (key, )))
         if not rows:
             raise KeyError(key)
-        return StringIO(rows[0]['value'])
+        value = str(rows[0]['value'])
+        return StringIO(self._decompress(value))
 
     def __setitem__(self, key, stream):
         value = stream.read()
+        value = self._compress(value)
         with self.conn:
             self.conn.execute('insert into %s values (?, ?)' % self.table_name, (key, buffer(value)))
 
