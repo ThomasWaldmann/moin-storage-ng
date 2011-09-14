@@ -52,11 +52,11 @@ class BytesStorage(_Storage, BytesMutableStorageBase):
         rows = list(self.conn.execute("select value from %s where key=?" % self.table_name, (key, )))
         if not rows:
             raise KeyError(key)
-        return rows[0]['value']
+        return str(rows[0]['value'])
 
     def __setitem__(self, key, value):
         with self.conn:
-            self.conn.execute('insert into %s values (?, ?)' % self.table_name, (key, value))
+            self.conn.execute('insert into %s values (?, ?)' % self.table_name, (key, buffer(value)))
 
 
 class FileStorage(_Storage, FileMutableStorageBase):
@@ -69,5 +69,5 @@ class FileStorage(_Storage, FileMutableStorageBase):
     def __setitem__(self, key, stream):
         value = stream.read()
         with self.conn:
-            self.conn.execute('insert into %s values (?, ?)' % self.table_name, (key, value))
+            self.conn.execute('insert into %s values (?, ?)' % self.table_name, (key, buffer(value)))
 

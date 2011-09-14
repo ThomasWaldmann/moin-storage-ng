@@ -41,6 +41,15 @@ class FileStorageTestBase(_StorageTestBase):
         with pytest.raises(KeyError):
             self.st[k]
 
+    def test_setitem_getitem_delitem_binary(self):
+        k, v = 'key', '\000\001\002'
+        self.st[k] = StringIO(v)
+        assert v == self.st[k].read()
+        assert len(v) == 3
+        del self.st[k]
+        with pytest.raises(KeyError):
+            self.st[k]
+
     def test_iter(self):
         kvs = set([('1', 'one'), ('2', 'two'), ('3', 'three'), ])
         for k, v in kvs:
@@ -63,6 +72,15 @@ class BytesStorageTestBase(_StorageTestBase):
         k, v = 'key', 'value'
         self.st[k] = v
         assert v == self.st[k]
+        del self.st[k]
+        with pytest.raises(KeyError):
+            self.st[k]
+
+    def test_setitem_getitem_delitem_binary(self):
+        k, v = 'key', '\000\001\002'
+        self.st[k] = v
+        assert v == self.st[k]
+        assert len(v) == 3
         del self.st[k]
         with pytest.raises(KeyError):
             self.st[k]
