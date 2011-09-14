@@ -551,15 +551,15 @@ class Item(object):
         self.user_name = user_name
         self.backend = self.indexer.backend
         # we need to switch off the acl check there to avoid endless recursion:
-        doc = self.indexer.document(all_revs=False, acl_check=False, name=item_name)
-        if doc:
-            self.itemid = doc[ITEMID]
-            self.current_revision = doc[REVID]
-            self.current_acl = doc.get(ACL)
-        else:
-            self.itemid = None
-            self.current_revision = None
-            self.current_acl = None
+        self._current = self.indexer.document(all_revs=False, acl_check=False, name=item_name) or {}
+        # keep it small, get rid of (big) stuff we do not need:
+        self._current.pop(CONTENT, None) # indexable (preprocessed) content
+
+    def _get_itemid(self):
+        return self._current.get(ITEMID)
+    def _set_itemid(self, value):
+        self._current[ITEMID] = value
+    itemid = property(_get_itemid, _set_itemid)
 
     @classmethod
     def create(cls, indexer, item_name, user_name=None):
@@ -592,7 +592,7 @@ class Item(object):
         # e.g. acl = "joe:read"  --> user joe may read
         if not self.indexer.acl_support:
             return True
-        acl = self.current_acl
+        acl = self._current.get(ACL)
         user_name = self.user_name
         if acl is None or user_name is None:
             allow = True
@@ -642,7 +642,7 @@ class Item(object):
         revid = backend.store_revision(meta, data)
         data.seek(0)  # rewind file
         self.indexer.index_revision(revid, meta, data)
-        self.current_revision = revid
+        self._current = self.indexer.document(all_revs=False, acl_check=False, revid=revid)
         return Revision(self, revid)
 
     def clear_revision(self, revid, reason=None):
