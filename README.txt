@@ -14,13 +14,13 @@ Storage Layers
 ==============
 We use a layered approach like this::
 
- Indexing Middleware   does complex stuff like indexing, searching, listing, ...
-  |
+ Indexing Middleware   does complex stuff like indexing, searching, listing,
+  |                    lookup by name, ACL checks, ...
   v
- Router Middleware     dispatches to multiple backends based on the name
-  |          |
+ Router Middleware     dispatches to multiple backends based on the name,
+  |          |         cares about absolute and relative names
   v          v
- Backend1   Backend2   store, get, destroy revisions
+ Backend1   Backend2   simple stuff: store, get, destroy revisions
 
 
 Indexing Middleware
@@ -36,7 +36,9 @@ Using Whoosh we build, maintain and use 2 indexes:
 When creating or destroying revisions, indexes are automatically updated.
 
 There is also code to do a full index rebuild in case it gets damaged, lost
-or needs rebuilding for other reasons.
+or needs rebuilding for other reasons. There is also index update code to
+do a quick "intelligent" update of a "mostly ok" index, that just adds,
+updates, deletes stuff that is different in backend compared to current index.
 
 Indexing is the only layer that can easily deal with **names** (it can
 easily translate names to UUIDs and vice versa) and with **items** (it
@@ -55,6 +57,14 @@ The layers below are using UUIDs to identify revisions meta and data:
 Many methods provided by the indexing middleware will be fast, because they
 will not access the layers below (like the storage), but just the index files,
 usually it is even just the small and thus quick latest-revs index.
+
+Indexing Middleware also checks ACLs, so a user will not see items in search
+results that he is not allowed to read. Also, trying to access a revision
+without read permission will give an AccessDenied exception.
+
+Note: The currently used "ACL implementation" is just a proof-of-concept
+quickhack to enable testing the acl checks and will be replaced by a sane
+one later.
 
 
 Router Middleware
