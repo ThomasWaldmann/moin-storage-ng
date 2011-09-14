@@ -23,61 +23,51 @@ class _Storage(MutableStorageBase):
 
     def create(self):
         conn = connect(self.db_name)
-        curs = conn.cursor()
-        curs.execute('create table %s (key text primary key, value blob)' % self.table_name)
-        conn.commit()
-        curs.close()
+        with conn:
+            conn.execute('create table %s (key text primary key, value blob)' % self.table_name)
 
     def destroy(self):
         conn = connect(self.db_name)
-        curs = conn.cursor()
-        curs.execute('drop table %s' % self.table_name)
-        conn.commit()
-        curs.close()
+        with conn:
+            conn.execute('drop table %s' % self.table_name)
 
     def open(self):
         self.conn = connect(self.db_name)
-        self.curs = self.conn.cursor()
+        self.conn.row_factory = Row # make column access by ['colname'] possible
 
     def close(self):
-        self.curs.close()
+        pass
 
     def __iter__(self):
-        self.curs.execute("select key from %s" % self.table_name)
-        for row in self.curs.fetchall():
-            key = row[0]
-            yield key
+        for row in self.conn.execute("select key from %s" % self.table_name):
+            yield row['key']
 
     def __delitem__(self, key):
-        self.curs.execute('delete from %s where key=?' % self.table_name, (key, ))
-        self.conn.commit()
+        with self.conn:
+            self.conn.execute('delete from %s where key=?' % self.table_name, (key, ))
 
 
 class BytesStorage(_Storage, BytesMutableStorageBase):
     def __getitem__(self, key):
-        self.curs.execute("select value from %s where key=?" % self.table_name, (key, ))
-        row = self.curs.fetchone()
-        if row is None:
+        rows = list(self.conn.execute("select value from %s where key=?" % self.table_name, (key, )))
+        if not rows:
             raise KeyError(key)
-        value = row[0]
-        return value
+        return rows[0]['value']
 
     def __setitem__(self, key, value):
-        self.curs.execute('insert into %s values (?, ?)' % self.table_name, (key, value))
-        self.conn.commit()
+        with self.conn:
+            self.conn.execute('insert into %s values (?, ?)' % self.table_name, (key, value))
 
 
 class FileStorage(_Storage, FileMutableStorageBase):
     def __getitem__(self, key):
-        self.curs.execute("select value from %s where key=?" % self.table_name, (key, ))
-        row = self.curs.fetchone()
-        if row is None:
+        rows = list(self.conn.execute("select value from %s where key=?" % self.table_name, (key, )))
+        if not rows:
             raise KeyError(key)
-        value = row[0]
-        return StringIO(value)
+        return StringIO(rows[0]['value'])
 
     def __setitem__(self, key, stream):
         value = stream.read()
-        self.curs.execute('insert into %s values (?, ?)' % self.table_name, (key, value))
-        self.conn.commit()
+        with self.conn:
+            self.conn.execute('insert into %s values (?, ?)' % self.table_name, (key, value))
 
