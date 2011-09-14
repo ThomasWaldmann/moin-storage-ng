@@ -15,7 +15,7 @@ import pytest
 
 from config import NAME, SIZE, ITEMID, REVID, DATAID, HASH_ALGORITHM, CONTENT, COMMENT
 
-from middleware.indexing import IndexingMiddleware
+from middleware.indexing import IndexingMiddleware, AccessDenied
 from backend.storages import MutableBackend
 
 from storage.memory import BytesStorage as MemoryBytesStorage
@@ -29,7 +29,7 @@ class TestIndexingMiddleware(object):
         self.be.create()
         self.be.open()
         index_dir = 'ix'
-        self.imw = IndexingMiddleware(index_dir, self.be)
+        self.imw = IndexingMiddleware(index_dir=index_dir, backend=self.be)
         self.imw.create()
         self.imw.open()
 
@@ -310,4 +310,55 @@ class TestIndexingMiddleware(object):
         doc = self.imw.document(content=u'test')
         assert expected_revid == doc[REVID]
         assert unicode(data) == doc[CONTENT]
+
+
+class TestProtectedIndexingMiddleware(object):
+    def setup_method(self, method):
+        meta_store = MemoryBytesStorage()
+        data_store = MemoryFileStorage()
+        self.be = MutableBackend(meta_store, data_store)
+        self.be.create()
+        self.be.open()
+        index_dir = 'ix'
+        self.imw = IndexingMiddleware(index_dir=index_dir, backend=self.be, user_name=u'joe', acl_support=True)
+        self.imw.create()
+        self.imw.open()
+
+    def teardown_method(self, method):
+        self.imw.close()
+        self.imw.destroy()
+        self.be.close()
+        self.be.destroy()
+
+    def test_documents(self):
+        item_name = u'public'
+        item = self.imw[item_name]
+        r = item.create_revision(dict(name=item_name, acl=u'joe:read'), StringIO('public content'))
+        revid_public = r.revid
+        item_name = u'secret'
+        item = self.imw[item_name]
+        r = item.create_revision(dict(name=item_name, acl=u''), StringIO('secret content'))
+        revid_secret = r.revid
+        revids = [doc[REVID] for doc in self.imw.documents(all_revs=False)]
+        assert revids == [revid_public]
+
+    def test_getitem(self):
+        item_name = u'public'
+        item = self.imw[item_name]
+        r = item.create_revision(dict(name=item_name, acl=u'joe:read'), StringIO('public content'))
+        revid_public = r.revid
+        item_name = u'secret'
+        item = self.imw[item_name]
+        r = item.create_revision(dict(name=item_name, acl=u'boss:read'), StringIO('secret content'))
+        revid_secret = r.revid
+        # now testing:
+        item_name = u'public'
+        item = self.imw[item_name]
+        r = item[revid_public]
+        assert r.data.read() == 'public content'
+        item_name = u'secret'
+        item = self.imw[item_name]
+        with pytest.raises(AccessDenied):
+            r = item[revid_secret]
+
 

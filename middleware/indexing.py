@@ -15,6 +15,9 @@ is indexed, we can do all sorts of operations on the indexer level:
 * lookup by name, uuid, ...
 * selecting
 * listing
+
+We also check ACLs here. Index has ALL content, so we must be careful not
+to show data from index to a user that is not allowed to read that data.
 """
 
 
@@ -90,13 +93,15 @@ def convert_to_indexable(meta, data):
 
 
 class IndexingMiddleware(object):
-    def __init__(self, index_dir, backend, **kw):
+    def __init__(self, index_dir, backend, user_name=None, acl_support=False, **kw):
         """
         Store params, create schemas.
         """
         self.index_dir = index_dir
         self.index_dir_tmp = index_dir + '.temp'
         self.backend = backend
+        self.user_name = user_name # TODO use currently logged-in username
+        self.acl_support = acl_support
         self.wikiname = u'' # TODO take from app.cfg.interwikiname
         self.ix = {}  # open indexes
         self.schemas = {}  # existing schemas
@@ -463,7 +468,10 @@ class IndexingMiddleware(object):
             # Note: callers must consume everything we yield, so the for loop
             # ends and the "with" is left to close the index files.
             for hit in searcher.search(q, **kw):
-                yield hit.fields()
+                doc = hit.fields()
+                item = self[doc[NAME]]
+                if item.allows('read'):
+                    yield doc
 
     def search_page(self, q, all_revs=False, pagenum=1, pagelen=10, **kw):
         """
@@ -473,7 +481,10 @@ class IndexingMiddleware(object):
             # Note: callers must consume everything we yield, so the for loop
             # ends and the "with" is left to close the index files.
             for hit in searcher.search_page(q, pagenum, pagelen=pagelen, **kw):
-                yield hit.fields()
+                doc = hit.fields()
+                item = self[doc[NAME]]
+                if item.allows('read'):
+                    yield doc
 
     def documents(self, all_revs=False, **kw):
         """
@@ -484,66 +495,88 @@ class IndexingMiddleware(object):
             # ends and the "with" is left to close the index files.
             if kw:
                 for doc in searcher.documents(**kw):
-                    yield doc
+                    item = self[doc[NAME]]
+                    if item.allows('read'):
+                        yield doc
             else: # XXX maybe this would make sense to be whoosh default behaviour for documents()?
                 for doc in searcher.all_stored_fields():
-                    yield doc
+                    item = self[doc[NAME]]
+                    if item.allows('read'):
+                        yield doc
 
-    def document(self, all_revs=False, **kw):
+    def document(self, all_revs=False, acl_check=True, **kw):
         """
         Return document matching the kw args.
+
+        :param acl_check: check 'read' ACL if True
         """
         with self.get_index(all_revs).searcher() as searcher:
-            return searcher.document(**kw)
+            doc = searcher.document(**kw)
+            if doc and acl_check:
+                item = self[doc[NAME]]
+                if item.allows('read'):
+                    return doc
+            else:
+                return doc
 
     def __getitem__(self, item_name):
         """
         Return item with <item_name> (may be a new or existing item).
         """
-        return Item(self, item_name)
+        return Item(self, item_name, user_name=self.user_name)
 
     def create_item(self, item_name):
         """
         Return item with <item_name> (must be a new item).
         """
-        return Item.create(self, item_name)
+        return Item.create(self, item_name, user_name=self.user_name)
 
     def existing_item(self, item_name):
         """
         Return item with <item_name> (must be an existing item).
         """
-        return Item.existing(self, item_name)
+        return Item.existing(self, item_name, user_name=self.user_name)
+
+
+class AccessDenied(Exception):
+    """
+    raised when a user is denied access to an Item or Revision by ACL.
+    """
 
 
 class Item(object):
-    def __init__(self, indexer, item_name):
+    def __init__(self, indexer, item_name, user_name=None):
         self.indexer = indexer
         self.item_name = item_name
+        self.user_name = user_name
         self.backend = self.indexer.backend
-        doc = self.indexer.document(all_revs=False, name=item_name)
+        # we need to switch off the acl check there to avoid endless recursion:
+        doc = self.indexer.document(all_revs=False, acl_check=False, name=item_name)
         if doc:
             self.itemid = doc[ITEMID]
             self.current_revision = doc[REVID]
+            self.current_acl = doc.get(ACL)
         else:
             self.itemid = None
             self.current_revision = None
+            self.current_acl = None
 
     @classmethod
-    def create(cls, indexer, item_name):
+    def create(cls, indexer, item_name, user_name=None):
         """
         Create a new item and return it, raise exception if it already exists.
         """
-        item = cls(indexer, item_name)
+        item = cls(indexer, item_name, user_name)
         if not item:
             return item
         raise ItemAlreadyExists(item_name)
         
     @classmethod
-    def existing(cls, indexer, item_name):
+    def existing(cls, indexer, item_name, user_name=None):
         """
         Get an existing item and return it, raise exception if it does not exist.
         """
-        item = cls(indexer, item_name)
+        item = cls(indexer, item_name, user_name)
         if item:
             return item
         raise ItemDoesNotExist(item_name)
@@ -553,6 +586,25 @@ class Item(object):
         Item exists (== has at least one revision)?
         """
         return self.itemid is not None
+
+    def allows(self, capability):
+        # just a temporary hack to be able to test this without real ACL code
+        # e.g. acl = "joe:read"  --> user joe may read
+        if not self.indexer.acl_support:
+            return True
+        acl = self.current_acl
+        user_name = self.user_name
+        if acl is None or user_name is None:
+            allow = True
+        else:
+            allow = "%s:%s" % (user_name, capability) in acl
+        #print "item allows user '%s' to '%s' (acl: %s): %s" % (user_name, capability, acl, ["no", "yes"][allow])
+        return allow
+
+    def require(self, capability):
+        if not self.allows(capability):
+            raise AccessDenied("item does not allow user '%r' to '%r'" % (self.user_name, capability))
+
 
     def iter_revs(self):
         """
@@ -566,6 +618,7 @@ class Item(object):
         """
         Get Revision with revision id <revid>.
         """
+        self.require('read')
         return Revision(self, revid)
 
     def get_revision(self, revid):
@@ -581,6 +634,7 @@ class Item(object):
         :type meta: dict
         :type data: open file (file must be closed by caller)
         """
+        self.require('create')
         if self.itemid is None:
             self.itemid = make_uuid()
         meta[ITEMID] = self.itemid
@@ -600,6 +654,7 @@ class Item(object):
         Note: "clear" means: we modify the revision in the backend, so most metadata
               values are clear, the reason is put into the comment and the data is empty.
         """
+        self.require('clear')
         backend = self.backend
         meta, data = backend.get_revision(revid) # raises KeyError if rev does not exist
         meta[COMMENT] = reason or u'destroyed'
@@ -626,6 +681,7 @@ class Item(object):
 
         Note: "destroy" means: we delete the revision from the backend
         """
+        self.require('destroy')
         self.backend.del_revision(revid)
         self.indexer.del_revision(revid)
         
