@@ -90,7 +90,9 @@ Already implemented key/value storages:
 
 * fs (stores into filesystem)
 * sqlite (stores into sqlite3 table, single db file in the filesystem)
+* kc (kyoto cabinet, single db file in the filesystem)
 * memory (stores into RAM, non-persistent!)
+* memcached (talks to a memcached server, non-persistent!)
 
 Likely one can also use many other existing k/v stores with very little code.
 
