@@ -22,11 +22,17 @@ class TrackingFileWrapper(object):
     """
     def __init__(self, realfile, hash_method='sha1'):
         self._realfile = realfile
+        self._read = realfile.read
         self.hash = hashlib.new(hash_method)
         self.size = 0
 
-    def read(self, size=-1):
-        data = self._realfile.read(size)
+    def read(self, size=None):
+        #XXX: workaround for werkzeug.wsgi.LimitedStream
+        #     which expects None instead of -1 for read everything
+        if size is None:
+            data = self._read()
+        else:
+            data = self._read(size)
         self.hash.update(data)
         self.size += len(data)
         return data
