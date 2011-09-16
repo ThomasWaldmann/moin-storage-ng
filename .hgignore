@@ -4,4 +4,4 @@
 .rej$
 .~$
 .DS_Store
-
+.*\.sqlite
