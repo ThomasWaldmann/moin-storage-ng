@@ -15,9 +15,9 @@ from config import NAME
 
 from backend import BackendBase, MutableBackendBase
 
-class Backend(BackendBase):
+class Backend(MutableBackendBase):
     """
-    read-only router
+    router, behaves readonly for readonly mounts
     """
     def __init__(self, mapping):
         """
@@ -39,7 +39,8 @@ class Backend(BackendBase):
         self.mapping = [(mountpoint.rstrip('/'), backend) for mountpoint, backend in mapping]
 
     def open(self):
-        pass
+        for mountpoint, backend in self.mapping:
+            backend.open()
 
     def close(self):
         for mountpoint, backend in self.mapping:
@@ -75,27 +76,33 @@ class Backend(BackendBase):
             meta[NAME] = u'%s/%s' % (mountpoint, meta[NAME])
         return meta, data
 
-
-class MutableBackend(Backend, MutableBackendBase):
-    """
-    read/write router
-    """
+    # writing part
     def create(self):
         for mountpoint, backend in self.mapping:
-            backend.create()
+            if isinstance(backend, MutableBackendBase):
+                backend.create()
+            #XXX log info?
 
     def destroy(self):
         for mountpoint, backend in self.mapping:
-            backend.destroy()
+            if isinstance(backend, MutableBackendBase):
+                backend.destroy()
+            #XXX log info?
 
     def store_revision(self, meta, data):
         itemname = meta[NAME]
         backend, itemname, mountpoint = self._get_backend(itemname)
+        if not isinstance(backend, MutableBackendBase):
+            raise TypeError('backend %r mounted at %r is readonly' % (
+                backend, mountpoint))
         meta[NAME] = itemname
         return u'%s/%s' % (mountpoint, backend.store_revision(meta, data))
 
     def del_revision(self, revid):
         mountpoint, revid = revid.rsplit(u'/', 1)
         backend = self._get_backend(mountpoint)[0]
+        if not isinstance(backend, MutableBackendBase):
+            raise TypeError('backend %r mounted at %r is readonly' % (
+                backend, mountpoint))
         backend.del_revision(revid)
 

@@ -9,13 +9,14 @@ MoinMoin - backend base classes
 
 from __future__ import absolute_import, division
 
-from abc import abstractmethod
+from abc import abstractmethod, ABCMeta
 
 class BackendBase(object):
     """
     ties together a store for metadata and a store for data, readonly
     """
 
+    __metaclass__ = ABCMeta
     @abstractmethod
     def open(self):
         """
