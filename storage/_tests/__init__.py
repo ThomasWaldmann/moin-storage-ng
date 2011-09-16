@@ -67,6 +67,19 @@ class FileStorageTestBase(_StorageTestBase):
         del self.st['foo']
         assert len(self.st) == 0
 
+    def test_perf(self):
+        pytest.skip("usually we do no performance tests")
+        for i in range(1000):
+            key = value = str(i)
+            self.st[key] = StringIO(value)
+        for i in range(1000):
+            key = expected_value = str(i)
+            assert self.st[key].read() == expected_value
+        for i in range(1000):
+            key = str(i)
+            del self.st[key]
+
+
 class BytesStorageTestBase(_StorageTestBase):
     def test_setitem_getitem_delitem(self):
         k, v = 'key', 'value'
@@ -100,4 +113,17 @@ class BytesStorageTestBase(_StorageTestBase):
         assert len(self.st) == 1
         del self.st['foo']
         assert len(self.st) == 0
+
+    def test_perf(self):
+        pytest.skip("usually we do no performance tests")
+        for i in range(1000):
+            key = value = str(i)
+            self.st[key] = value
+        for i in range(1000):
+            key = expected_value = str(i)
+            assert self.st[key] == expected_value
+        for i in range(1000):
+            key = str(i)
+            del self.st[key]
+
 
