@@ -16,6 +16,9 @@ class _Storage(MutableStorageBase):
     """
     A simple dict-based in-memory storage. No persistence!
     """
+    def __init__(self):
+        self._st = None
+
     def create(self):
         self._st = {}
 

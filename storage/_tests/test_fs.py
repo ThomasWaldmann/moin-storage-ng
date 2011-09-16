@@ -8,25 +8,27 @@ MoinMoin - fs storage tests
 
 from __future__ import absolute_import, division
 
-import os, tempfile
-
+import pytest
 from storage.fs import BytesStorage, FileStorage
-from storage._tests import BytesStorageTestBase, FileStorageTestBase
 
-class TestBytesStorage(BytesStorageTestBase):
-    def setup_method(self, method):
-        path = tempfile.mkdtemp()
-        os.rmdir(path)
-        self.st = BytesStorage(path)
-        self.st.create()
-        self.st.open()
 
-class TestFileStorage(FileStorageTestBase):
-    def setup_method(self, method):
-        path = tempfile.mkdtemp()
-        os.rmdir(path)
-        self.st = FileStorage(path)
-        self.st.create()
-        self.st.open()
+@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
+def test_create(tmpdir, Storage):
+    target = tmpdir.join('store')
+    assert not target.check()
 
+    store = Storage(str(target))
+    assert not target.check()
+    store.create()
+    assert target.check()
+
+    return store
+
+
+@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
+def test_destroy(tmpdir, Storage):
+    store = test_create(tmpdir, Storage)
+    target = tmpdir.join('store')
+    store.destroy()
+    assert not target.check()
 

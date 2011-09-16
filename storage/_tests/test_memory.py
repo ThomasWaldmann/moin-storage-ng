@@ -5,23 +5,23 @@
 MoinMoin - memory storage tests
 """
 
-
-from __future__ import absolute_import, division
-
+import pytest
 from storage.memory import BytesStorage, FileStorage
-from storage._tests import BytesStorageTestBase, FileStorageTestBase
 
+@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
+def test_create( Storage):
+    store = Storage()
+    assert store._st is None
 
-class TestBytesStorage(BytesStorageTestBase):
-    def setup_method(self, method):
-        self.st = BytesStorage()
-        self.st.create()
-        self.st.open()
+    store.create()
+    assert store._st == {}
 
-class TestFileStorage(FileStorageTestBase):
-    def setup_method(self, method):
-        self.st = FileStorage()
-        self.st.create()
-        self.st.open()
+    return store
+
+@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
+def test_destroy(Storage):
+    store = test_create(Storage)
+    store.destroy()
+    assert store._st is None
 
 

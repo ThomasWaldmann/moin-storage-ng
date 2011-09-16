@@ -6,36 +6,42 @@ MoinMoin - sqlite storage tests
 """
 
 
-from __future__ import absolute_import, division
-
+import pytest
 from storage.sqlite import BytesStorage, FileStorage
-from storage._tests import BytesStorageTestBase, FileStorageTestBase
+
+def bytes_compressed(path):
+    return BytesStorage(path, 'test_table', compression_level=1)
+def bytes_uncompressed(path):
+    return BytesStorage(path, 'test_table', compression_level=0)
+
+def file_compressed(path):
+    return FileStorage(path, 'test_table', compression_level=1)
+def file_uncompressed(path):
+    return FileStorage(path, 'test_table', compression_level=0)
+
+all_setups = pytest.mark.multi(Storage=[
+    bytes_uncompressed,
+    bytes_compressed,
+    file_uncompressed,
+    file_compressed,
+])
 
 
-class TestBytesStorage(BytesStorageTestBase):
-    def setup_method(self, method):
-        self.st = BytesStorage('testdb.sqlite', 'testbs', compression_level=0) # ':memory:' does not work, strange
-        self.st.create()
-        self.st.open()
+@all_setups
+def test_create(tmpdir, Storage):
+    dbfile = tmpdir.join('store.sqlite')
+    assert not dbfile.check()
+    store = Storage(str(dbfile))
+    assert not dbfile.check()
+    store.create()
+    assert dbfile.check()
+    return store
 
+@all_setups
+def test_destroy(tmpdir, Storage):
+    dbfile = tmpdir.join('store.sqlite')
+    store = test_create(tmpdir, Storage)
+    store.destroy()
+    #XXX: check for dropped table
 
-class TestBytesStorageCompressed(BytesStorageTestBase):
-    def setup_method(self, method):
-        self.st = BytesStorage('testdb.sqlite', 'testbs', compression_level=1) # ':memory:' does not work, strange
-        self.st.create()
-        self.st.open()
-
-
-class TestFileStorage(FileStorageTestBase):
-    def setup_method(self, method):
-        self.st = FileStorage('testdb.sqlite', 'testfs', compression_level=0) # ':memory:' does not work, strange
-        self.st.create()
-        self.st.open()
-
-
-class TestFileStorageCompressed(FileStorageTestBase):
-    def setup_method(self, method):
-        self.st = FileStorage('testdb.sqlite', 'testfs', compression_level=1) # ':memory:' does not work, strange
-        self.st.create()
-        self.st.open()
 

@@ -9,21 +9,29 @@ MoinMoin - kyoto cabinet storage tests
 from __future__ import absolute_import, division
 
 import pytest
-pytest.importorskip('kyotocabinet')
+pytest.importorskip('storage.kc')
 
 from storage.kc import BytesStorage, FileStorage
-from storage._tests import BytesStorageTestBase, FileStorageTestBase
 
 
-class TestBytesStorage(BytesStorageTestBase):
-    def setup_method(self, method):
-        self.st = BytesStorage('testdb.kch') # *.kch
-        self.st.create()
-        self.st.open()
+@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
+def test_create(tmpdir, Storage):
+    target = tmpdir.join('store.kc')
+    assert not target.check()
 
-class TestFileStorage(FileStorageTestBase):
-    def setup_method(self, method):
-        self.st = FileStorage('testdb.kch') # *.kch
-        self.st.create()
-        self.st.open()
+    store = Storage(str(target))
+    assert not target.check()
+    store.create()
+    assert target.check()
+
+    return store
+
+
+@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
+def test_destroy(tmpdir, Storage):
+    store = test_create(tmpdir, Storage)
+    target = tmpdir.join('store.kc')
+    store.destroy()
+    assert not target.check()
+
 
