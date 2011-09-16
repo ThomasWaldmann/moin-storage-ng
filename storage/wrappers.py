@@ -1,6 +1,17 @@
+# Copyright: 2011 MoinMoin:RonnyPfannschmidt
+# License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
+
+"""
+MoinMoin - wrappers
+"""
+
+
+from __future__ import absolute_import, division
 
 from io import BytesIO
 from collections import MutableMapping
+
+
 class ByteToStreamWrappingStore(MutableMapping):
     def __init__(self, stream_store):
         self._st = stream_store
@@ -19,6 +30,4 @@ class ByteToStreamWrappingStore(MutableMapping):
 
     def __len__(self):
         return len(self._st)
-
-
 

@@ -2,7 +2,7 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - memcached "storage" (rather a CACHE, non-persisten, in RAM)
+MoinMoin - memcached "storage" (rather a CACHE, non-persistent, in RAM)
 
 Note: does not support iteration.
 """

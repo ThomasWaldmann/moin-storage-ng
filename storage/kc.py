@@ -28,7 +28,7 @@ from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStor
 
 class _Storage(MutableStorageBase):
     """
-    A simple dict-based in-memory storage. No persistence!
+    Kyoto cabinet based storage.
     """
     def __init__(self, path, mode=DB.OWRITER|DB.OAUTOTRAN, db_opts=DB.GCONCURRENT):
         """
