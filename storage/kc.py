@@ -3,6 +3,8 @@
 
 """
 MoinMoin - kyoto cabinet storage
+
+Note: only ONE process can open a kyoto cabinet in OWRITER (writable) mode.
 """
 
 
@@ -18,20 +20,35 @@ class _Storage(MutableStorageBase):
     """
     A simple dict-based in-memory storage. No persistence!
     """
-    def __init__(self, filename):
-        self.filename = filename
+    def __init__(self, path, mode=DB.OWRITER|DB.OAUTOTRAN, db_opts=DB.GCONCURRENT):
+        """
+        Store params for .open(). Please refer to kyotocabinet-python-legacy docs for more information.
+
+        :param path: db path + options, examples:
+                     "db.kch" - no compression, no encryption
+                     "db.kch#zcomp=zlib" - ZLIB compression
+                     "db.kch#zcomp=arc#zkey=yoursecretkey" - ARC4 encryption
+                     "db.kch#zcomp=arcz#zkey=yoursecretkey" - ARC4 encryption, ZLIB compression
+        :param mode: mode given to DB.open call (default: DB.OWRITER|DB.OAUTOTRAN)
+        :param db_opts: opts given to DB(opts=...) constructor (default: DB.GCONCURRENT)
+        """
+        self.path = path
+        self.mode = mode
+        self.db_opts = db_opts
 
     def create(self):
-        pass
-
-    def destroy(self):
-        self.open()
-        self._db.clear()
+        self.open(mode=self.mode|DB.OCREATE)
         self.close()
 
-    def open(self):
-        self._db = DB()
-        if not self._db.open(self.filename, DB.OWRITER | DB.OCREATE):
+    def destroy(self):
+        self.open(mode=self.mode|DB.OTRUNCATE)
+        self.close()
+
+    def open(self, mode=None):
+        self._db = DB(self.db_opts)
+        if mode is None:
+            mode = self.mode
+        if not self._db.open(self.path, mode):
             raise IOError("open error: " + str(self._db.error()))
 
     def close(self):
