@@ -23,16 +23,36 @@ class TrackingFileWrapper(object):
     def __init__(self, realfile, hash_method='sha1'):
         self._realfile = realfile
         self._read = realfile.read
-        self.hash = hashlib.new(hash_method)
-        self.size = 0
+        self._hash = hashlib.new(hash_method)
+        self._size = 0
+        self._finished = False
+        fpos = realfile.tell()
+        if fpos:
+            raise ValueError("file needs to be at pos 0")
 
     def read(self, size=None):
         #XXX: workaround for werkzeug.wsgi.LimitedStream
         #     which expects None instead of -1 for read everything
         if size is None:
             data = self._read()
+            self._finished = True
         else:
             data = self._read(size)
-        self.hash.update(data)
-        self.size += len(data)
+            if not data:
+                self._finished = True
+        self._hash.update(data)
+        self._size += len(data)
         return data
+    
+    @property
+    def size(self):
+        if not self._finished:
+            raise AttributeError("do not access size attribute before having read all data")
+        return self._size
+
+    @property
+    def hash(self):
+        if not self._finished:
+            raise AttributeError("do not access hash attribute before having read all data")
+        return self._hash
+
