@@ -1,3 +1,13 @@
+# Copyright: 2011 MoinMoin:RonnyPfannschmidt
+# License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
+
+"""
+MoinMoin - serializer / deserializer tests
+"""
+
+
+from __future__ import absolute_import, division
+
 from storage.memory import BytesStorage, FileStorage
 
 from middleware.indexing import IndexingMiddleware, AccessDenied
@@ -47,7 +57,7 @@ def make_middleware(request):
     request.addfinalizer(backend.close)
     
     mw = IndexingMiddleware(index_dir=str(tmpdir/'foo'),
-                                  backend=backend)
+                            backend=backend)
     mw.create()
     mw.open()
     request.addfinalizer(mw.destroy)
@@ -56,7 +66,6 @@ def make_middleware(request):
 
 
 def test_serialize_deserialize(source, target):
-
     i = 0
     for name, meta, data in contents:
         item = source['name']
@@ -72,3 +81,4 @@ def test_serialize_deserialize(source, target):
     print sorted(source.backend)
     print sorted(target.backend)
     assert sorted(source.backend)  == sorted(target.backend)
+
