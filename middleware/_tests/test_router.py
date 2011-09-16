@@ -15,17 +15,26 @@ import pytest
 from config import NAME, REVID
 
 from middleware.router import Backend as RouterBackend
-from backend.storages import MutableBackend as StorageBackend
+from backend.storages import MutableBackend as StorageBackend, Backend as ROBackend
 
 from storage.memory import BytesStorage as MemoryBytesStorage
 from storage.memory import FileStorage as MemoryFileStorage
+
+
+def make_ro_backend():
+    store = StorageBackend(MemoryBytesStorage(), MemoryFileStorage())
+    store.create()
+    store.store_revision({NAME:'test'}, StringIO(''))
+    store.store_revision({NAME:'test2'}, StringIO(''))
+    return ROBackend(store.meta_store, store.data_store)
 
 
 
 def pytest_funcarg__router(request):
     root_be = StorageBackend(MemoryBytesStorage(), MemoryFileStorage())
     sub_be = StorageBackend(MemoryBytesStorage(), MemoryFileStorage())
-    router = RouterBackend([('sub', sub_be), ('', root_be)])
+    ro_be = make_ro_backend()
+    router = RouterBackend([('sub', sub_be),('ro',ro_be), ('', root_be)])
     router.open()
     router.create()
 
@@ -56,7 +65,7 @@ def test_store_get_del(router):
     assert sub_name == sub_meta[NAME]
 
     # when looking into the storage backend, we see relative names (without mountpoint):
-    root_meta, _ = router.mapping[1][1].get_revision(revid_split(root_revid)[1])
+    root_meta, _ = router.mapping[-1][1].get_revision(revid_split(root_revid)[1])
     sub_meta, _ = router.mapping[0][1].get_revision(revid_split(sub_revid)[1])
     assert root_name == root_meta[NAME]
     assert sub_name == 'sub' + '/' + sub_meta[NAME]
@@ -65,9 +74,31 @@ def test_store_get_del(router):
     router.del_revision(sub_revid)
 
 
+def test_store_readonly_fails(router):
+    with pytest.raises(TypeError):
+        router.store_revision(dict(name=u'ro/testing'), StringIO(''))
 
-def test_iter(router):
+def test_del_readonly_fails(router):
+    ro_id = next(iter(router)) # we have only readonly items
+    print ro_id
+    with pytest.raises(TypeError):
+        router.del_revision(ro_id)
+
+
+def test_destroy_create_dont_touch_ro(router):
+    existing = set(router)
     root_revid = router.store_revision(dict(name=u'foo'), StringIO(''))
     sub_revid = router.store_revision(dict(name=u'sub/bar'), StringIO(''))
-    assert set(router) == set([root_revid, sub_revid])
+
+    router.destroy()
+    router.create()
+
+    assert set(router) == existing
+
+
+def test_iter(router):
+    existing = set(router)
+    root_revid = router.store_revision(dict(name=u'foo'), StringIO(''))
+    sub_revid = router.store_revision(dict(name=u'sub/bar'), StringIO(''))
+    assert set(router) == (set([root_revid, sub_revid])|existing)
 
