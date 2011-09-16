@@ -8,6 +8,9 @@ MoinMoin - kyoto cabinet storage tests
 
 from __future__ import absolute_import, division
 
+import pytest
+pytest.importorskip('kyotocabinet')
+
 from storage.kc import BytesStorage, FileStorage
 from storage._tests import BytesStorageTestBase, FileStorageTestBase
 
