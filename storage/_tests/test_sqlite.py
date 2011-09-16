@@ -1,3 +1,4 @@
+# Copyright: 2011 MoinMoin:RonnyPfannschmidt
 # Copyright: 2011 MoinMoin:ThomasWaldmann
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
@@ -42,6 +43,5 @@ def test_destroy(tmpdir, Storage):
     dbfile = tmpdir.join('store.sqlite')
     store = test_create(tmpdir, Storage)
     store.destroy()
-    #XXX: check for dropped table
-
+    # XXX: check for dropped table
 

@@ -1,3 +1,14 @@
+# Copyright: 2011 MoinMoin:RonnyPfannschmidt
+# Copyright: 2011 MoinMoin:ThomasWaldmann
+# License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
+
+"""
+MoinMoin - storage tests
+"""
+
+
+from __future__ import absolute_import, division
+
 import pytest
 
 def test_getitem_raises(store):
@@ -40,8 +51,9 @@ def test_len(store):
     del store['foo']
     assert len(store) == 0
 
+
 def test_perf(store):
-    #XXX: introduce perf test option
+    # XXX: introduce perf test option
     pytest.skip("usually we do no performance tests")
     for i in range(1000):
         key = value = str(i)
@@ -52,3 +64,4 @@ def test_perf(store):
     for i in range(1000):
         key = str(i)
         del store[key]
+

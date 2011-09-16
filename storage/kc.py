@@ -19,6 +19,7 @@ Note: only ONE process can open a kyoto cabinet in OWRITER (writable) mode.
 
 from __future__ import absolute_import, division
 
+import os
 from StringIO import StringIO
 
 from kyotocabinet import *
@@ -50,8 +51,7 @@ class _Storage(MutableStorageBase):
         self.close()
 
     def destroy(self):
-        self.open(mode=self.mode|DB.OTRUNCATE)
-        self.close()
+        os.remove(self.path)
 
     def open(self, mode=None):
         self._db = DB(self.db_opts)

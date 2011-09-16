@@ -1,8 +1,19 @@
+# Copyright: 2011 MoinMoin:RonnyPfannschmidt
+# License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
+
+"""
+MoinMoin - storage test magic
+"""
+
+
+from __future__ import absolute_import, division
+
 import pytest
 from storage.wrappers import ByteToStreamWrappingStore
 
 # memcached is not in the loop
 stores = 'fs kc memory sqlite sqlite:compressed'.split()
+
 
 constructors = {
     'memory': lambda store, _: store(),
@@ -11,7 +22,7 @@ constructors = {
                                           'test_table', compression_level=0),
     'sqlite:compressed': lambda store, tmpdir: store(str(tmpdir.join('store.sqlite')),
                                           'test_table', compression_level=1),
-    'kc': lambda store, tmpdir: store(str(tmpdir.join('store'))),
+    'kc': lambda store, tmpdir: store(str(tmpdir.join('store.kch'))),
 }
 
 
@@ -36,7 +47,7 @@ def pytest_generate_tests(metafunc):
 
     multi_mark = getattr(metafunc.function, 'multi', None)
     if multi_mark is not None:
-        #XXX: hack
+        # XXX: hack
         storages = multi_mark.kwargs['Storage']
         for storage in storages:
             metafunc.addcall(id=storage.__name__, funcargs={
@@ -55,9 +66,8 @@ def make_storage(request):
     store = construct(klass, tmpdir)
     store.create()
     store.open()
-
     # no destroy in the normal finalizer
-    # so we can keep the data for example if its a tmpdir
+    # so we can keep the data for example if it's a tmpdir
     request.addfinalizer(store.close)
     return store
 
