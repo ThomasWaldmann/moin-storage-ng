@@ -1,3 +1,23 @@
+# Copyright: 2011 MoinMoin:RonnyPfannschmidt
+# Copyright: 2011 MoinMoin:ThomasWaldmann
+# License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
+
+"""
+MoinMoin - backend serialization / deserialization
+
+We use a simple custom format here:
+
+4 bytes length of meta (m)
+m bytes metadata (json serialization, utf-8 encoded)
+        (the metadata contains the data length d in meta['size'])
+d bytes binary data
+... (repeat for all meta/data)
+4 bytes 00 (== length of next meta -> there is none, this is the end)
+"""
+
+
+from __future__ import absolute_import, division
+
 import struct
 import json
 from io import BytesIO
@@ -22,8 +42,6 @@ def serialize_iter(backend):
             if not block:
                 break
             yield block
-    # the deserializer expects next meta len here, but gets 0 as
-    # indication of a valid end of stream:
     yield struct.pack('!i', 0)
 
 
