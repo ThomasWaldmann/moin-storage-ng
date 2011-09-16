@@ -5,6 +5,15 @@
 MoinMoin - kyoto cabinet storage
 
 Note: only ONE process can open a kyoto cabinet in OWRITER (writable) mode.
+      So, if you want to use this for moin, you need to make sure you have only
+      1 moin process running at a time. Multithreading is allowed, but not
+      multi-process.
+      
+      For multi-process moin, you either need to use some different moin
+      storage (not kyoto cabinet) or use a storage for kyoto tycoon (which is
+      a network server that uses kyoto cabinet).
+
+      TODO: implement storage for kyoto tycoon server.
 """
 
 
