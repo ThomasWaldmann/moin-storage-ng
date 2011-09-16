@@ -108,20 +108,22 @@ class MutableBackend(Backend, MutableBackendBase):
         self.meta_store[metaid] = meta
         return metaid
 
-    def _store_data(self, data):
-        dataid = make_uuid()
+    def store_revision(self, meta, data):
         # XXX Idea: we could check the type the store wants from us:
         # if it is a str/bytes (BytesStorage), just use meta "as is",
         # if it is a file (FileStorage), wrap it into StringIO and give that to the store.
-        self.data_store[dataid] = data
-        return dataid
-
-    def store_revision(self, meta, data):
-        tfw = TrackingFileWrapper(data, hash_method=HASH_ALGORITHM)
-        dataid = self._store_data(tfw)
-        meta['dataid'] = dataid
-        meta['size'] = tfw.size
-        meta[HASH_ALGORITHM] = tfw.hash.hexdigest()
+        if 'dataid' not in meta:
+            tfw = TrackingFileWrapper(data, hash_method=HASH_ALGORITHM)
+            dataid = make_uuid()
+            self.data_store[dataid] = tfw
+            meta['dataid'] = dataid
+            meta['size'] = tfw.size
+            meta[HASH_ALGORITHM] = tfw.hash.hexdigest()
+        else:
+            dataid = meta['dataid']
+            # we will just asume stuff is correct if you pass it with a data id
+            if dataid not in self.data_store:
+                self.data_store[dataid] = data
         # if something goes wrong below, the data shall be purged by a garbage collection
         metaid = self._store_meta(meta)
         return metaid

@@ -660,6 +660,7 @@ class Item(object):
         meta[COMMENT] = reason or u'destroyed'
         # TODO cleanup more metadata
         data = StringIO('') # nothing to see there
+        del meta['dataid'] # remove dataid
         revid = backend.store_revision(meta, data)
         # Note: we just stored new (empty) data for this revision, but the old
         # data file is still in storage (not referenced by THIS revision any more)

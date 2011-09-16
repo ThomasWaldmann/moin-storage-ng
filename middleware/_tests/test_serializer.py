@@ -67,6 +67,7 @@ def test_serialize_deserialize(source, target):
     serialize(source.backend, io)
     io.seek(0)
     deserialize(io, target.backend)
+    target.rebuild()
 
     print sorted(source.backend)
     print sorted(target.backend)
