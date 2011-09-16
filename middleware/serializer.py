@@ -1,5 +1,6 @@
 import struct
 import json
+from io import BytesIO
 from werkzeug.wsgi import LimitedStream
 
 
@@ -32,14 +33,9 @@ def deserialize(io, backend):
         text = meta_str.decode('utf-8')
         meta = json.loads(text)
         data_size = meta[u'size']
-        
-        #XXX: this shoul be, unreliable for unknown reason
-        #limited = LimitedStream(io, data_size)
-        #backend.store_revision(meta, limited)
-        #assert limited.is_exhausted
 
-        data = io.read(data_size)
-        from StringIO import StringIO
-        backend.store_revision(meta, StringIO(data))
-        
+        limited = LimitedStream(io, data_size)
+        backend.store_revision(meta, limited)
+        assert limited.is_exhausted
+
 
