@@ -27,7 +27,7 @@ class BackendTestBase(object):
 
     def test_getrevision_raises(self):
         with pytest.raises(KeyError):
-            self.be.get_revision('doesnotexist')
+            self.be.retrieve('doesnotexist')
 
     def test_iter(self):
         assert list(self.be) == []
@@ -49,18 +49,18 @@ class MutableBackendTestBase(BackendTestBase):
 
     def test_getrevision_raises(self):
         with pytest.raises(KeyError):
-            self.be.get_revision('doesnotexist')
+            self.be.retrieve('doesnotexist')
 
     def test_store_get_del(self):
         meta = dict(foo='bar')
         data = 'baz'
-        metaid = self.be.store_revision(meta, StringIO(data))
-        m, d = self.be.get_revision(metaid)
+        metaid = self.be.store(meta, StringIO(data))
+        m, d = self.be.retrieve(metaid)
         assert m == meta
         assert d.read() == data
-        self.be.del_revision(metaid)
+        self.be.remove(metaid)
         with pytest.raises(KeyError):
-            self.be.get_revision(metaid)
+            self.be.retrieve(metaid)
 
     def test_iter(self):
         mds = [#(metadata items, data str)
@@ -70,13 +70,13 @@ class MutableBackendTestBase(BackendTestBase):
               ]
         expected_result = set()
         for m, d in mds:
-            k = self.be.store_revision(m, StringIO(d))
+            k = self.be.store(m, StringIO(d))
             # note: store_revision injects some new keys (like dataid, metaid, size, hash key) into m
             m = tuple(sorted(m.items()))
             expected_result.add((k, m, d))
         result = set()
         for k in self.be:
-            m, d = self.be.get_revision(k)
+            m, d = self.be.retrieve(k)
             m = tuple(sorted(m.items()))
             result.add((k, m, d.read()))
         assert result == expected_result

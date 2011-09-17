@@ -120,7 +120,7 @@ class Backend(BackendBase):
                 raise KeyError(fn)
             raise
 
-    def get_revision(self, fn):
+    def retrieve(self, fn):
         meta = self._get_meta(fn)
         data = self._get_data(fn)
         return meta, data

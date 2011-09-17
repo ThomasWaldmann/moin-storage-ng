@@ -72,7 +72,7 @@ class Backend(BackendBase):
         # a file-like object).
         return data
 
-    def get_revision(self, metaid):
+    def retrieve(self, metaid):
         meta = self._get_meta(metaid)
         dataid = meta['dataid']
         data = self._get_data(dataid)
@@ -108,7 +108,7 @@ class MutableBackend(Backend, MutableBackendBase):
         self.meta_store[metaid] = meta
         return metaid
 
-    def store_revision(self, meta, data):
+    def store(self, meta, data):
         # XXX Idea: we could check the type the store wants from us:
         # if it is a str/bytes (BytesStorage), just use meta "as is",
         # if it is a file (FileStorage), wrap it into StringIO and give that to the store.
@@ -134,7 +134,7 @@ class MutableBackend(Backend, MutableBackendBase):
     def _del_data(self, dataid):
         del self.data_store[dataid]
 
-    def del_revision(self, metaid):
+    def remove(self, metaid):
         meta = self._get_meta(metaid)
         dataid = meta['dataid']
         self._del_meta(metaid)

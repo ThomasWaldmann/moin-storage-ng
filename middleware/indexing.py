@@ -296,7 +296,7 @@ class IndexingMiddleware(object):
         with writer as writer:
             for revid in revids:
                 if mode in ['add', 'update', ]:
-                    meta, data = self.backend.get_revision(revid)
+                    meta, data = self.backend.retrieve(revid)
                     content = convert_to_indexable(meta, data)
                     doc = backend_to_index(meta, content, schema, wikiname)
                 if mode == 'update':
@@ -639,7 +639,7 @@ class Item(object):
             self.itemid = make_uuid()
         meta[ITEMID] = self.itemid
         backend = self.backend
-        revid = backend.store_revision(meta, data)
+        revid = backend.store(meta, data)
         data.seek(0)  # rewind file
         self.indexer.index_revision(revid, meta, data)
         self._current = self.indexer.document(all_revs=False, acl_check=False, revid=revid)
@@ -656,12 +656,12 @@ class Item(object):
         """
         self.require('clear')
         backend = self.backend
-        meta, data = backend.get_revision(revid) # raises KeyError if rev does not exist
+        meta, data = backend.retrieve(revid) # raises KeyError if rev does not exist
         meta[COMMENT] = reason or u'destroyed'
         # TODO cleanup more metadata
         data = StringIO('') # nothing to see there
         del meta['dataid'] # remove dataid
-        revid = backend.store_revision(meta, data)
+        revid = backend.store(meta, data)
         # Note: we just stored new (empty) data for this revision, but the old
         # data file is still in storage (not referenced by THIS revision any more)
         data.seek(0)  # rewind file
@@ -683,7 +683,7 @@ class Item(object):
         Note: "destroy" means: we delete the revision from the backend
         """
         self.require('destroy')
-        self.backend.del_revision(revid)
+        self.backend.remove(revid)
         self.indexer.del_revision(revid)
         
     def destroy_item(self):
@@ -702,7 +702,7 @@ class Revision(object):
         self.item = item
         self.revid = revid
         self.backend = item.backend
-        self.meta, self.data = self.backend.get_revision(self.revid) # raises KeyError if rev does not exist
+        self.meta, self.data = self.backend.retrieve(self.revid) # raises KeyError if rev does not exist
 
     def close(self):
         self.data.close()

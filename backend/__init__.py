@@ -36,7 +36,7 @@ class BackendBase(object):
         """
 
     @abstractmethod
-    def get_revision(self, metaid):
+    def retrieve(self, metaid):
         """
         return meta, data related to metaid
         """
@@ -59,13 +59,13 @@ class MutableBackendBase(BackendBase):
         """
 
     @abstractmethod
-    def store_revision(self, meta, data):
+    def store(self, meta, data):
         """
         store meta, data into the backend, return the metaid
         """
 
     @abstractmethod
-    def del_revision(self, metaid):
+    def remove(self, metaid):
         """
         delete meta, data related to metaid from the backend
         """

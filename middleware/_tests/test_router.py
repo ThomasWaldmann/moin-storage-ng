@@ -24,8 +24,8 @@ from storage.memory import FileStorage as MemoryFileStorage
 def make_ro_backend():
     store = StorageBackend(MemoryBytesStorage(), MemoryFileStorage())
     store.create()
-    store.store_revision({NAME:'test'}, StringIO(''))
-    store.store_revision({NAME:'test2'}, StringIO(''))
+    store.store({NAME:'test'}, StringIO(''))
+    store.store({NAME:'test2'}, StringIO(''))
     return ROBackend(store.meta_store, store.data_store)
 
 
@@ -51,44 +51,44 @@ def revid_split(revid):
 
 def test_store_get_del(router):
     root_name = u'foo'
-    root_revid = router.store_revision(dict(name=root_name), StringIO(''))
+    root_revid = router.store(dict(name=root_name), StringIO(''))
     sub_name = u'sub/bar'
-    sub_revid = router.store_revision(dict(name=sub_name), StringIO(''))
+    sub_revid = router.store(dict(name=sub_name), StringIO(''))
 
     assert revid_split(root_revid)[0] == ''
     assert revid_split(sub_revid)[0] == 'sub'
 
     # when going via the router backend, we get back fully qualified names:
-    root_meta, _ = router.get_revision(root_revid)
-    sub_meta, _ = router.get_revision(sub_revid)
+    root_meta, _ = router.retrieve(root_revid)
+    sub_meta, _ = router.retrieve(sub_revid)
     assert root_name == root_meta[NAME]
     assert sub_name == sub_meta[NAME]
 
     # when looking into the storage backend, we see relative names (without mountpoint):
-    root_meta, _ = router.mapping[-1][1].get_revision(revid_split(root_revid)[1])
-    sub_meta, _ = router.mapping[0][1].get_revision(revid_split(sub_revid)[1])
+    root_meta, _ = router.mapping[-1][1].retrieve(revid_split(root_revid)[1])
+    sub_meta, _ = router.mapping[0][1].retrieve(revid_split(sub_revid)[1])
     assert root_name == root_meta[NAME]
     assert sub_name == 'sub' + '/' + sub_meta[NAME]
     # delete revs:
-    router.del_revision(root_revid)
-    router.del_revision(sub_revid)
+    router.remove(root_revid)
+    router.remove(sub_revid)
 
 
 def test_store_readonly_fails(router):
     with pytest.raises(TypeError):
-        router.store_revision(dict(name=u'ro/testing'), StringIO(''))
+        router.store(dict(name=u'ro/testing'), StringIO(''))
 
 def test_del_readonly_fails(router):
     ro_id = next(iter(router)) # we have only readonly items
     print ro_id
     with pytest.raises(TypeError):
-        router.del_revision(ro_id)
+        router.remove(ro_id)
 
 
 def test_destroy_create_dont_touch_ro(router):
     existing = set(router)
-    root_revid = router.store_revision(dict(name=u'foo'), StringIO(''))
-    sub_revid = router.store_revision(dict(name=u'sub/bar'), StringIO(''))
+    root_revid = router.store(dict(name=u'foo'), StringIO(''))
+    sub_revid = router.store(dict(name=u'sub/bar'), StringIO(''))
 
     router.destroy()
     router.create()
@@ -98,7 +98,7 @@ def test_destroy_create_dont_touch_ro(router):
 
 def test_iter(router):
     existing = set(router)
-    root_revid = router.store_revision(dict(name=u'foo'), StringIO(''))
-    sub_revid = router.store_revision(dict(name=u'sub/bar'), StringIO(''))
+    root_revid = router.store(dict(name=u'foo'), StringIO(''))
+    sub_revid = router.store(dict(name=u'sub/bar'), StringIO(''))
     assert set(router) == (set([root_revid, sub_revid])|existing)
 

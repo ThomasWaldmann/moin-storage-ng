@@ -31,7 +31,7 @@ def serialize(backend, dst):
 
 def serialize_iter(backend):
     for revid in backend:
-        meta, data = backend.get_revision(revid)
+        meta, data = backend.retrieve(revid)
 
         text = json.dumps(meta, ensure_ascii=False)
         meta_str = text.encode('utf-8')
@@ -57,7 +57,7 @@ def deserialize(src, backend):
         data_size = meta[u'size']
 
         limited = LimitedStream(src, data_size)
-        backend.store_revision(meta, limited)
+        backend.store(meta, limited)
         assert limited.is_exhausted
 
 

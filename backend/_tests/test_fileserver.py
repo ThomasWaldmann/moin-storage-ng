@@ -47,7 +47,7 @@ class TestFileServerBackend(BackendTestBase):
         expected_result = self._prepare(items)
         result = set()
         for i in self.be:
-            meta, data = self.be.get_revision(i)
+            meta, data = self.be.retrieve(i)
             # we don't want to check mtime
             del meta['mtime']
             meta = tuple(sorted(meta.items()))
@@ -73,7 +73,7 @@ class TestFileServerBackend(BackendTestBase):
         expected_result.add((dir_meta, dir_data))
         result = set()
         for i in self.be:
-            meta, data = self.be.get_revision(i)
+            meta, data = self.be.retrieve(i)
             # we don't want to check mtime
             del meta['mtime']
             meta = tuple(sorted(meta.items()))

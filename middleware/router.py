@@ -69,10 +69,10 @@ class Backend(MutableBackendBase):
             for revid in backend:
                 yield u'%s/%s' % (mountpoint, revid)
 
-    def get_revision(self, revid):
+    def retrieve(self, revid):
         mountpoint, revid = revid.rsplit(u'/', 1)
         backend = self._get_backend(mountpoint)[0]
-        meta, data = backend.get_revision(revid)
+        meta, data = backend.retrieve(revid)
         if mountpoint:
             meta[NAME] = u'%s/%s' % (mountpoint, meta[NAME])
         return meta, data
@@ -90,20 +90,20 @@ class Backend(MutableBackendBase):
                 backend.destroy()
             #XXX log info?
 
-    def store_revision(self, meta, data):
+    def store(self, meta, data):
         itemname = meta[NAME]
         backend, itemname, mountpoint = self._get_backend(itemname)
         if not isinstance(backend, MutableBackendBase):
             raise TypeError('backend %r mounted at %r is readonly' % (
                 backend, mountpoint))
         meta[NAME] = itemname
-        return u'%s/%s' % (mountpoint, backend.store_revision(meta, data))
+        return u'%s/%s' % (mountpoint, backend.store(meta, data))
 
-    def del_revision(self, revid):
+    def remove(self, revid):
         mountpoint, revid = revid.rsplit(u'/', 1)
         backend = self._get_backend(mountpoint)[0]
         if not isinstance(backend, MutableBackendBase):
             raise TypeError('backend %r mounted at %r is readonly' % (
                 backend, mountpoint))
-        backend.del_revision(revid)
+        backend.remove(revid)
 
