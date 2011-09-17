@@ -12,7 +12,7 @@ import pytest
 from storage.wrappers import ByteToStreamWrappingStore
 
 # memcached is not in the loop
-stores = 'fs kc memory sqlite sqlite:compressed'.split()
+stores = 'fs kc kt memory sqlite sqlite:compressed'.split()
 
 
 constructors = {
@@ -23,6 +23,7 @@ constructors = {
     'sqlite:compressed': lambda store, tmpdir: store(str(tmpdir.join('store.sqlite')),
                                           'test_table', compression_level=1),
     'kc': lambda store, tmpdir: store(str(tmpdir.join('store.kch'))),
+    'kt': lambda store, _: store(),
 }
 
 

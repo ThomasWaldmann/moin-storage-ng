@@ -90,7 +90,8 @@ Already implemented key/value storages:
 
 * fs (stores into filesystem)
 * sqlite (stores into sqlite3 table, single db file in the filesystem)
-* kc (kyoto cabinet, single db file in the filesystem)
+* kc (kyoto cabinet, single db file in the filesystem, local and single process ONLY!)
+* kt (kyoto tycoon, network server for kyoto cabinet, remote or multi-process usage possible)
 * memory (stores into RAM, non-persistent!)
 * memcached (talks to a memcached server, non-persistent!)
 
