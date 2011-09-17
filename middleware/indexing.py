@@ -641,52 +641,44 @@ class Item(object):
         """
         return self[revid]
 
-    def create_revision(self, meta, data):
+    def store_revision(self, meta, data, overwrite=False):
         """
-        Create a new revision, write metadata and data to it.
+        Store a revision into the backend, write metadata and data to it.
+
+        Usually this will be a new revision, either of an existing item or
+        a new item. With overwrite mode, we can also store over existing
+        revisions.
 
         :type meta: dict
         :type data: open file (file must be closed by caller)
+        :param overwrite: if True, allow overwriting of existing revs.
         """
-        self.require('create')
+        self.require('write')
         if self.itemid is None:
+            self.require('create')
             self.itemid = make_uuid()
-        meta[ITEMID] = self.itemid
         backend = self.backend
+        if overwrite:
+            self.require('overwrite')
+        else:
+            revid = meta.get(REVID)
+            if revid is not None and revid in backend:
+                raise AccessDenied('need overwrite flag to overwrite existing revisions')
+        meta[ITEMID] = self.itemid
         revid = backend.store(meta, data)
         data.seek(0)  # rewind file
         self.indexer.index_revision(revid, meta, data)
-        self._current = self.indexer.document(all_revs=False, acl_check=False, revid=revid)
+        if not overwrite:
+            self._current = self.indexer.document(all_revs=False, acl_check=False, revid=revid)
         return Revision(self, revid)
 
-    def clear_revision(self, revid, reason=None):
+    def store_all_revisions(self, meta, data):
         """
-        Check if revision with that revid exists (via index) -
-        if yes, clear revision with that revid.
-        if no, raise RevisionDoesNotExistError.
-
-        Note: "clear" means: we modify the revision in the backend, so most metadata
-              values are clear, the reason is put into the comment and the data is empty.
-        """
-        self.require('clear')
-        backend = self.backend
-        meta, data = backend.retrieve(revid) # raises KeyError if rev does not exist
-        meta[COMMENT] = reason or u'destroyed'
-        # TODO cleanup more metadata
-        data = StringIO('') # nothing to see there
-        del meta['dataid'] # remove dataid
-        revid = backend.store(meta, data)
-        # Note: we just stored new (empty) data for this revision, but the old
-        # data file is still in storage (not referenced by THIS revision any more)
-        data.seek(0)  # rewind file
-        self.indexer.index_revision(revid, meta, data)
-        
-    def clear_item(self, reason=None):
-        """
-        Clear all revisions of this item.
+        Store all revisions of this item.
         """
         for revid in self.iter_revs():
-            self.clear_revision(revid, reason)
+            meta[REVID] = revid
+            self.store_revision(meta, data, overwrite=True)
 
     def destroy_revision(self, revid):
         """
@@ -700,7 +692,7 @@ class Item(object):
         self.backend.remove(revid)
         self.indexer.remove_revision(revid)
         
-    def destroy_item(self):
+    def destroy_all_revisions(self):
         """
         Destroy all revisions of this item.
         """

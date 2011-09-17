@@ -69,7 +69,7 @@ def test_serialize_deserialize(source, target):
     i = 0
     for name, meta, data in contents:
         item = source['name']
-        item.create_revision(dict(meta, mtime=i), StringIO(data))
+        item.store_revision(dict(meta, mtime=i), StringIO(data))
         i += 1
 
     io = StringIO()
