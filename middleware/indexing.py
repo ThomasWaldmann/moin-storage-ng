@@ -261,9 +261,9 @@ class IndexingMiddleware(object):
         with writer as writer:
             writer.update_document(**doc)
 
-    def del_revision(self, revid, async=True):
+    def remove_revision(self, revid, async=True):
         """
-        Delete a single revision from indexes.
+        Remove a single revision from indexes.
         """
         if async:
             writer = AsyncWriter(self.ix[ALL_REVS])
@@ -684,7 +684,7 @@ class Item(object):
         """
         self.require('destroy')
         self.backend.remove(revid)
-        self.indexer.del_revision(revid)
+        self.indexer.remove_revision(revid)
         
     def destroy_item(self):
         """
