@@ -81,17 +81,39 @@ class TestIndexingMiddleware(object):
         item_name = u'foo'
         item = self.imw[item_name]
         rev = item.create_revision(dict(name=item_name), StringIO('bar'))
-        revid_destroyed = rev.revid
+        revid0 = rev.revid
         rev = item.create_revision(dict(name=item_name), StringIO('baz'))
-        revid_left = rev.revid
-        # destroy revision:
-        item.destroy_revision(revid_destroyed)
+        revid1 = rev.revid
+        rev = item.create_revision(dict(name=item_name), StringIO('...'))
+        revid2 = rev.revid
+        print "revids:", revid0, revid1, revid2
+        # destroy a non-current revision:
+        item.destroy_revision(revid0)
         # check if the revision was destroyed:
         item = self.imw[item_name]
         with pytest.raises(KeyError):
-            item.get_revision(revid_destroyed)
+            item.get_revision(revid0)
         revs = list(item.iter_revs())
-        assert revs == [revid_left]
+        print "after destroy revid0", revs
+        assert sorted(revs) == sorted([revid1, revid2])
+        # destroy a current revision:
+        item.destroy_revision(revid2)
+        # check if the revision was destroyed:
+        item = self.imw[item_name]
+        with pytest.raises(KeyError):
+            item.get_revision(revid2)
+        revs = list(item.iter_revs())
+        print "after destroy revid2", revs
+        assert sorted(revs) == sorted([revid1])
+        # destroy the last revision left:
+        item.destroy_revision(revid1)
+        # check if the revision was destroyed:
+        item = self.imw[item_name]
+        with pytest.raises(KeyError):
+            item.get_revision(revid1)
+        revs = list(item.iter_revs())
+        print "after destroy revid1", revs
+        assert sorted(revs) == sorted([])
 
     def test_destroy_item(self):
         revids = []
