@@ -336,15 +336,14 @@ class IndexingMiddleware(object):
 
     def _find_latest_revids(self, index, query=None):
         """
-        find the latest revids from the backend
+        find the latest revids using the all-revs index
 
         :param index: an up-to-date and open ALL_REVS index
-        :param query: query to search only specific revisions (optional, default: all revisions)
+        :param query: query to search only specific revisions (optional, default: all items/revisions)
         :returns: a list of the latest revids
         """
         if query is None:
             query = Every()
-        # now, using the freshly built index, determine the latest revisions for all items:
         with index.searcher() as searcher:
             result = searcher.search(query, groupedby=ITEMID, sortedby=FieldFacet(MTIME, reverse=True))
             by_item = result.groups(ITEMID)
@@ -513,6 +512,7 @@ class IndexingMiddleware(object):
                     if item.allows('read'):
                         yield doc
             else: # XXX maybe this would make sense to be whoosh default behaviour for documents()?
+                  #     should be implemented for whoosh >= 2.2.3
                 for doc in searcher.all_stored_fields():
                     item = self[doc[NAME]]
                     if item.allows('read'):
@@ -520,7 +520,7 @@ class IndexingMiddleware(object):
 
     def document(self, all_revs=False, acl_check=True, **kw):
         """
-        Return document matching the kw args.
+        Return a document matching the kw args.
 
         :param acl_check: check 'read' ACL if True
         """
@@ -674,7 +674,7 @@ class Item(object):
 
     def store_all_revisions(self, meta, data):
         """
-        Store all revisions of this item.
+        Store over all revisions of this item.
         """
         for revid in self.iter_revs():
             meta[REVID] = revid
@@ -682,11 +682,7 @@ class Item(object):
 
     def destroy_revision(self, revid):
         """
-        Check if revision with that revid exists (via index) -
-        if yes, destroy revision with that revid.
-        if no, raise RevisionDoesNotExistError.
-
-        Note: "destroy" means: we delete the revision from the backend
+        Destroy revision <revid>.
         """
         self.require('destroy')
         self.backend.remove(revid)
