@@ -12,6 +12,8 @@ from StringIO import StringIO
 
 import pytest
 
+from config import SIZE, HASH_ALGORITHM
+
 class BackendTestBase(object):
     def setup_method(self, method):
         """
@@ -61,6 +63,51 @@ class MutableBackendTestBase(BackendTestBase):
         self.be.remove(metaid)
         with pytest.raises(KeyError):
             self.be.retrieve(metaid)
+
+    def test_store_check_size(self):
+        # no size
+        meta = dict(name='foo')
+        data = 'barbaz'
+        metaid = self.be.store(meta, StringIO(data))
+        m, d = self.be.retrieve(metaid)
+        assert meta[SIZE] == 6
+        # correct size
+        meta = dict(name='foo', size=6)
+        data = 'barbaz'
+        metaid = self.be.store(meta, StringIO(data))
+        m, d = self.be.retrieve(metaid)
+        assert meta[SIZE] == 6
+        # wrong size (less data than size declared in meta)
+        meta = dict(name='foo', size=42)
+        data = 'barbaz'
+        with pytest.raises(ValueError):
+            metaid = self.be.store(meta, StringIO(data))
+        # wrong size (more data than size declared in meta)
+        meta = dict(name='foo', size=3)
+        data = 'barbaz'
+        with pytest.raises(ValueError):
+            metaid = self.be.store(meta, StringIO(data))
+
+    def test_store_check_hash(self):
+        # no hash
+        meta = dict(name='foo')
+        data = 'barbaz'
+        metaid = self.be.store(meta, StringIO(data))
+        m, d = self.be.retrieve(metaid)
+        hashcode = meta[HASH_ALGORITHM]
+        # correct hash
+        meta = dict(name='foo')
+        meta[HASH_ALGORITHM] = hashcode
+        data = 'barbaz'
+        metaid = self.be.store(meta, StringIO(data))
+        m, d = self.be.retrieve(metaid)
+        assert meta[HASH_ALGORITHM] == hashcode
+        # wrong data -> hash mismatch
+        meta = dict(name='foo')
+        meta[HASH_ALGORITHM] = hashcode
+        data = 'brrbrr'
+        with pytest.raises(ValueError):
+            metaid = self.be.store(meta, StringIO(data))
 
     def test_iter(self):
         mds = [#(metadata items, data str)

@@ -117,8 +117,18 @@ class MutableBackend(Backend, MutableBackendBase):
             dataid = make_uuid()
             self.data_store[dataid] = tfw
             meta['dataid'] = dataid
-            meta['size'] = tfw.size
-            meta[HASH_ALGORITHM] = tfw.hash.hexdigest()
+            size_expected = meta.get('size')
+            size_real = tfw.size
+            if size_expected is not None and size_expected != size_real:
+                raise ValueError("computed data size (%d) does not match data size declared in metadata (%d)" % (
+                                 size_real, size_expected))
+            meta['size'] = size_real
+            hash_expected = meta.get(HASH_ALGORITHM)
+            hash_real = tfw.hash.hexdigest()
+            if hash_expected is not None and hash_expected != hash_real:
+                raise ValueError("computed data hash (%s) does not match data hash declared in metadata (%s)" % (
+                                 hash_real, hash_expected))
+            meta[HASH_ALGORITHM] = hash_real
         else:
             dataid = meta['dataid']
             # we will just asume stuff is correct if you pass it with a data id
