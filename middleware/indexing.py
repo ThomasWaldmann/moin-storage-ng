@@ -390,6 +390,8 @@ class IndexingMiddleware(object):
         * after the index was moved to the normal index location
         
         Reason: new revisions that were created after the rebuild started might be missing in new index.
+
+        :returns: index changed (bool)
         """
         index_dir = self.index_dir_tmp if tmp else self.index_dir
         index_all = open_dir(index_dir, indexname=ALL_REVS)
@@ -400,6 +402,7 @@ class IndexingMiddleware(object):
                 ix_revids = set([doc[REVID] for doc in searcher.all_stored_fields()])
             add_revids = backend_revids - ix_revids
             del_revids = ix_revids - backend_revids
+            changed = add_revids or del_revids
             self._modify_index(index_all, self.schemas[ALL_REVS], self.wikiname, add_revids, 'add')
             self._modify_index(index_all, self.schemas[ALL_REVS], self.wikiname, del_revids, 'delete')
 
@@ -416,6 +419,7 @@ class IndexingMiddleware(object):
             self._modify_index(index_latest, self.schemas[LATEST_REVS], self.wikiname, del_revids, 'delete')
         finally:
             index_latest.close()
+        return changed
 
     def optimize_storage(self):
         """
