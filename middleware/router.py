@@ -1,4 +1,5 @@
 # Copyright: 2008-2011 MoinMoin:ThomasWaldmann
+# Copyright: 2011 MoinMoin:RonnyPfannschmidt
 # Copyright: 2009 MoinMoin:ChristopherDenter
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
