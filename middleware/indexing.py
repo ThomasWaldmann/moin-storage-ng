@@ -538,23 +538,38 @@ class IndexingMiddleware(object):
             else:
                 return doc
 
-    def __getitem__(self, item_name):
+    def __getitem__(self, name):
         """
-        Return item with <item_name> (may be a new or existing item).
+        Return item with <name> (may be a new or existing item).
         """
-        return Item(self, user_name=self.user_name, name=item_name)
+        return Item(self, user_name=self.user_name, name=name)
 
-    def create_item(self, item_name):
+    def get_item(self, **query):
         """
-        Return item with <item_name> (must be a new item).
-        """
-        return Item.create(self, user_name=self.user_name, name=item_name)
+        Return item identified by the query (may be a new or existing item).
 
-    def existing_item(self, item_name):
+        :kwargs **query: e.g. name=u"Foo" or itemid="..." or ...
+                         (must be a unique fieldname=value for the latest-revs index)
         """
-        Return item with <item_name> (must be an existing item).
+        return Item(self, user_name=self.user_name, **query)
+
+    def create_item(self, **query):
         """
-        return Item.existing(self, user_name=self.user_name, name=item_name)
+        Return item identified by the query (must be a new item).
+
+        :kwargs **query: e.g. name=u"Foo" or itemid="..." or ...
+                         (must be a unique fieldname=value for the latest-revs index)
+        """
+        return Item.create(self, user_name=self.user_name, **query)
+
+    def existing_item(self, **query):
+        """
+        Return item identified by query (must be an existing item).
+
+        :kwargs **query: e.g. name=u"Foo" or itemid="..." or ...
+                         (must be a unique fieldname=value for the latest-revs index)
+        """
+        return Item.existing(self, user_name=self.user_name, **query)
 
 
 class AccessDenied(Exception):
