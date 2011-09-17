@@ -483,7 +483,7 @@ class IndexingMiddleware(object):
             for hit in searcher.search(q, **kw):
                 doc = hit.fields()
                 latest_doc = not all_revs and doc or None
-                item = Item(self, name=doc[NAME], user_name=self.user_name, latest_doc=latest_doc)
+                item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
                 if item.allows('read'):
                     yield doc
 
@@ -497,7 +497,7 @@ class IndexingMiddleware(object):
             for hit in searcher.search_page(q, pagenum, pagelen=pagelen, **kw):
                 doc = hit.fields()
                 latest_doc = not all_revs and doc or None
-                item = Item(self, name=doc[NAME], user_name=self.user_name, latest_doc=latest_doc)
+                item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
                 if item.allows('read'):
                     yield doc
 
@@ -511,14 +511,14 @@ class IndexingMiddleware(object):
             if kw:
                 for doc in searcher.documents(**kw):
                     latest_doc = not all_revs and doc or None
-                    item = Item(self, name=doc[NAME], user_name=self.user_name, latest_doc=latest_doc)
+                    item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
                     if item.allows('read'):
                         yield doc
             else: # XXX maybe this would make sense to be whoosh default behaviour for documents()?
                   #     should be implemented for whoosh >= 2.2.3
                 for doc in searcher.all_stored_fields():
                     latest_doc = not all_revs and doc or None
-                    item = Item(self, name=doc[NAME], user_name=self.user_name, latest_doc=latest_doc)
+                    item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
                     if item.allows('read'):
                         yield doc
 
@@ -532,7 +532,7 @@ class IndexingMiddleware(object):
             doc = searcher.document(**kw)
             if doc and acl_check:
                 latest_doc = not all_revs and doc or None
-                item = Item(self, name=doc[NAME], user_name=self.user_name, latest_doc=latest_doc)
+                item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
                 if item.allows('read'):
                     return doc
             else:
@@ -542,19 +542,19 @@ class IndexingMiddleware(object):
         """
         Return item with <item_name> (may be a new or existing item).
         """
-        return Item(self, name=item_name, user_name=self.user_name)
+        return Item(self, user_name=self.user_name, name=item_name)
 
     def create_item(self, item_name):
         """
         Return item with <item_name> (must be a new item).
         """
-        return Item.create(self, name=item_name, user_name=self.user_name)
+        return Item.create(self, user_name=self.user_name, name=item_name)
 
     def existing_item(self, item_name):
         """
         Return item with <item_name> (must be an existing item).
         """
-        return Item.existing(self, name=item_name, user_name=self.user_name)
+        return Item.existing(self, user_name=self.user_name, name=item_name)
 
 
 class AccessDenied(Exception):
@@ -564,14 +564,23 @@ class AccessDenied(Exception):
 
 
 class Item(object):
-    def __init__(self, indexer, name, user_name=None, latest_doc=None):
+    def __init__(self, indexer, user_name=None, latest_doc=None, **query):
+        """
+        :param indexer: indexer middleware instance
+        :param user_name: user name (for acl checking)
+        :param latest_doc: if caller already has a latest-revs index whoosh document
+                           it can be given there, to avoid us fetching same doc again
+                           from the index
+        :kwargs **query: any unique fieldname=value for the latest-revs index, e.g.:
+                         name="foo" or itemid="....." to fetch the item's current
+                         doc from the index (if not given via latest_doc).
+        """
         self.indexer = indexer
-        self.name = name
         self.user_name = user_name
         self.backend = self.indexer.backend
         if latest_doc is None:
             # we need to switch off the acl check there to avoid endless recursion:
-            latest_doc = self.indexer.document(all_revs=False, acl_check=False, name=name) or {}
+            latest_doc = self.indexer.document(all_revs=False, acl_check=False, **query) or {}
         self._current = latest_doc
 
     def _get_itemid(self):
@@ -581,24 +590,24 @@ class Item(object):
     itemid = property(_get_itemid, _set_itemid)
 
     @classmethod
-    def create(cls, indexer, name, user_name=None):
+    def create(cls, indexer, user_name=None, **query):
         """
         Create a new item and return it, raise exception if it already exists.
         """
-        item = cls(indexer, name=name, user_name=user_name)
+        item = cls(indexer, user_name=user_name, **query)
         if not item:
             return item
-        raise ItemAlreadyExists(name)
+        raise ItemAlreadyExists(repr(query))
         
     @classmethod
-    def existing(cls, indexer, name, user_name=None):
+    def existing(cls, indexer, user_name=None, **query):
         """
         Get an existing item and return it, raise exception if it does not exist.
         """
-        item = cls(indexer, name=name, user_name=user_name)
+        item = cls(indexer, user_name=user_name, **query)
         if item:
             return item
-        raise ItemDoesNotExist(name)
+        raise ItemDoesNotExist(repr(query))
 
     def __nonzero__(self):
         """
