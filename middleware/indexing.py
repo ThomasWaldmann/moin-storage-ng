@@ -252,7 +252,7 @@ class IndexingMiddleware(object):
         else:
             writer = self.ix[ALL_REVS].writer()
         with writer as writer:
-            writer.update_document(**doc) # clear_revision() gives us an existing revid
+            writer.update_document(**doc) # update, because store_revision() may give us an existing revid
         doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
         if async:
             writer = AsyncWriter(self.ix[LATEST_REVS])
@@ -482,7 +482,8 @@ class IndexingMiddleware(object):
             # ends and the "with" is left to close the index files.
             for hit in searcher.search(q, **kw):
                 doc = hit.fields()
-                item = self[doc[NAME]]
+                latest_doc = not all_revs and doc or None
+                item = Item(self, name=doc[NAME], user_name=self.user_name, latest_doc=latest_doc)
                 if item.allows('read'):
                     yield doc
 
@@ -495,7 +496,8 @@ class IndexingMiddleware(object):
             # ends and the "with" is left to close the index files.
             for hit in searcher.search_page(q, pagenum, pagelen=pagelen, **kw):
                 doc = hit.fields()
-                item = self[doc[NAME]]
+                latest_doc = not all_revs and doc or None
+                item = Item(self, name=doc[NAME], user_name=self.user_name, latest_doc=latest_doc)
                 if item.allows('read'):
                     yield doc
 
@@ -508,13 +510,15 @@ class IndexingMiddleware(object):
             # ends and the "with" is left to close the index files.
             if kw:
                 for doc in searcher.documents(**kw):
-                    item = self[doc[NAME]]
+                    latest_doc = not all_revs and doc or None
+                    item = Item(self, name=doc[NAME], user_name=self.user_name, latest_doc=latest_doc)
                     if item.allows('read'):
                         yield doc
             else: # XXX maybe this would make sense to be whoosh default behaviour for documents()?
                   #     should be implemented for whoosh >= 2.2.3
                 for doc in searcher.all_stored_fields():
-                    item = self[doc[NAME]]
+                    latest_doc = not all_revs and doc or None
+                    item = Item(self, name=doc[NAME], user_name=self.user_name, latest_doc=latest_doc)
                     if item.allows('read'):
                         yield doc
 
@@ -527,7 +531,8 @@ class IndexingMiddleware(object):
         with self.get_index(all_revs).searcher() as searcher:
             doc = searcher.document(**kw)
             if doc and acl_check:
-                item = self[doc[NAME]]
+                latest_doc = not all_revs and doc or None
+                item = Item(self, name=doc[NAME], user_name=self.user_name, latest_doc=latest_doc)
                 if item.allows('read'):
                     return doc
             else:
@@ -537,19 +542,19 @@ class IndexingMiddleware(object):
         """
         Return item with <item_name> (may be a new or existing item).
         """
-        return Item(self, item_name, user_name=self.user_name)
+        return Item(self, name=item_name, user_name=self.user_name)
 
     def create_item(self, item_name):
         """
         Return item with <item_name> (must be a new item).
         """
-        return Item.create(self, item_name, user_name=self.user_name)
+        return Item.create(self, name=item_name, user_name=self.user_name)
 
     def existing_item(self, item_name):
         """
         Return item with <item_name> (must be an existing item).
         """
-        return Item.existing(self, item_name, user_name=self.user_name)
+        return Item.existing(self, name=item_name, user_name=self.user_name)
 
 
 class AccessDenied(Exception):
@@ -559,15 +564,15 @@ class AccessDenied(Exception):
 
 
 class Item(object):
-    def __init__(self, indexer, item_name, user_name=None):
+    def __init__(self, indexer, name, user_name=None, latest_doc=None):
         self.indexer = indexer
-        self.item_name = item_name
+        self.name = name
         self.user_name = user_name
         self.backend = self.indexer.backend
-        # we need to switch off the acl check there to avoid endless recursion:
-        self._current = self.indexer.document(all_revs=False, acl_check=False, name=item_name) or {}
-        # keep it small, get rid of (big) stuff we do not need:
-        self._current.pop(CONTENT, None) # indexable (preprocessed) content
+        if latest_doc is None:
+            # we need to switch off the acl check there to avoid endless recursion:
+            latest_doc = self.indexer.document(all_revs=False, acl_check=False, name=name) or {}
+        self._current = latest_doc
 
     def _get_itemid(self):
         return self._current.get(ITEMID)
@@ -576,24 +581,24 @@ class Item(object):
     itemid = property(_get_itemid, _set_itemid)
 
     @classmethod
-    def create(cls, indexer, item_name, user_name=None):
+    def create(cls, indexer, name, user_name=None):
         """
         Create a new item and return it, raise exception if it already exists.
         """
-        item = cls(indexer, item_name, user_name)
+        item = cls(indexer, name=name, user_name=user_name)
         if not item:
             return item
-        raise ItemAlreadyExists(item_name)
+        raise ItemAlreadyExists(name)
         
     @classmethod
-    def existing(cls, indexer, item_name, user_name=None):
+    def existing(cls, indexer, name, user_name=None):
         """
         Get an existing item and return it, raise exception if it does not exist.
         """
-        item = cls(indexer, item_name, user_name)
+        item = cls(indexer, name=name, user_name=user_name)
         if item:
             return item
-        raise ItemDoesNotExist(item_name)
+        raise ItemDoesNotExist(name)
 
     def __nonzero__(self):
         """
