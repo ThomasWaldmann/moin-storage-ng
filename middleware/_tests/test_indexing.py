@@ -80,11 +80,11 @@ class TestIndexingMiddleware(object):
     def test_destroy_revision(self):
         item_name = u'foo'
         item = self.imw[item_name]
-        rev = item.create_revision(dict(name=item_name), StringIO('bar'))
+        rev = item.create_revision(dict(name=item_name, mtime=1), StringIO('bar'))
         revid0 = rev.revid
-        rev = item.create_revision(dict(name=item_name), StringIO('baz'))
+        rev = item.create_revision(dict(name=item_name, mtime=2), StringIO('baz'))
         revid1 = rev.revid
-        rev = item.create_revision(dict(name=item_name), StringIO('...'))
+        rev = item.create_revision(dict(name=item_name, mtime=3), StringIO('...'))
         revid2 = rev.revid
         print "revids:", revid0, revid1, revid2
         # destroy a non-current revision:

@@ -41,7 +41,7 @@ from whoosh.index import open_dir, create_in, EmptyIndexError
 from whoosh.writing import AsyncWriter
 from whoosh.filedb.multiproc import MultiSegmentWriter
 from whoosh.qparser import QueryParser, MultifieldParser
-from whoosh.query import Every
+from whoosh.query import Every, Term
 from whoosh.sorting import FieldFacet
 
 from config import WIKINAME, NAME, NAME_EXACT, MTIME, CONTENTTYPE, TAGS, \
@@ -276,9 +276,35 @@ class IndexingMiddleware(object):
         else:
             writer = self.ix[LATEST_REVS].writer()
         with writer as writer:
-            # TODO: if the revid was in the latest revs index, we remove it by
-            # this. we should add whatever is the latest rev now.
-            writer.delete_by_term(REVID, revid)
+            # find out itemid related to the revid we want to remove:
+            with self.ix[LATEST_REVS].searcher() as searcher:
+                docnum_remove = searcher.document_number(revid=revid)
+                if docnum_remove is not None:
+                    itemid = searcher.stored_fields(docnum_remove)[ITEMID]
+            if docnum_remove is not None:
+                # we are removing a revid that is in latest revs index
+                try:
+                    latest_revids = self._find_latest_revids(self.ix[ALL_REVS], Term(ITEMID, itemid))
+                except AttributeError:
+                    # workaround for bug #200 AttributeError: 'FieldCache' object has no attribute 'code'
+                    latest_revids = []
+                if latest_revids:
+                    # we have a latest revision, just update the document in the index:
+                    assert len(latest_revids) == 1 # this item must have only one latest revision
+                    latest_revid = latest_revids[0]
+                    # we must fetch from backend because schema for LATEST_REVS is different than for ALL_REVS
+                    # (and we can't be sure we have all fields stored, too)
+                    meta, _ = self.backend.retrieve(latest_revid)
+                    # we only use meta (not data), because we do not want to transform data->content again (this
+                    # is potentially expensive) as we already have the transformed content stored in ALL_REVS index:
+                    with self.ix[ALL_REVS].searcher() as searcher:
+                        doc = searcher.document(revid=latest_revid)
+                        content = doc[CONTENT]
+                    doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], self.wikiname)
+                    writer.update_document(**doc)
+                else:
+                    # this is no revision left in this item that could be the new "latest rev", just kill the rev
+                    writer.delete_document(docnum_remove)
 
     def _modify_index(self, index, schema, wikiname, revids, mode='add', procs=1, limitmb=256):
         """
@@ -308,16 +334,19 @@ class IndexingMiddleware(object):
                 else:
                     raise ValueError("mode must be 'update', 'add' or 'delete', not '%s'" % mode)
 
-    def _find_latest_revids1(self, index):
+    def _find_latest_revids(self, index, query=None):
         """
         find the latest revids from the backend
 
         :param index: an up-to-date and open ALL_REVS index
+        :param query: query to search only specific revisions (optional, default: all revisions)
         :returns: a list of the latest revids
         """
+        if query is None:
+            query = Every()
         # now, using the freshly built index, determine the latest revisions for all items:
         with index.searcher() as searcher:
-            result = searcher.search(Every(), groupedby=ITEMID, sortedby=FieldFacet(MTIME, reverse=True))
+            result = searcher.search(query, groupedby=ITEMID, sortedby=FieldFacet(MTIME, reverse=True))
             by_item = result.groups(ITEMID)
             latest_revids = []
             for _, vals in by_item.items():
@@ -326,21 +355,6 @@ class IndexingMiddleware(object):
                 latest_revid = searcher.stored_fields(vals[0])[REVID]
                 latest_revids.append(latest_revid)
         return latest_revids
-
-    def _find_latest_revids2(self, index):
-        # XXX alternative implementation - which is better?
-        with index.searcher() as searcher:
-            item_revids = {}
-            for doc in searcher.all_stored_fields():
-                revid, mtime, itemid = doc[REVID], doc[MTIME], doc[ITEMID]
-                item_revids.setdefault(itemid, []).append((mtime, revid))
-            latest_revids = []
-            for itemid, mtimes_revids in item_revids.items():
-                latest_revid = sorted(mtimes_revids, reverse=True)[0][1]
-                latest_revids.append(latest_revid)
-        return latest_revids
-
-    _find_latest_revids = _find_latest_revids1
 
     def rebuild(self, tmp=False, procs=1, limitmb=256):
         """
