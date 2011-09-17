@@ -119,9 +119,9 @@ class TestIndexingMiddleware(object):
         revids = []
         item_name = u'foo'
         item = self.imw[item_name]
-        rev = item.create_revision(dict(name=item_name), StringIO('bar'))
+        rev = item.create_revision(dict(name=item_name, mtime=1), StringIO('bar'))
         revids.append(rev.revid)
-        rev = item.create_revision(dict(name=item_name), StringIO('baz'))
+        rev = item.create_revision(dict(name=item_name, mtime=2), StringIO('baz'))
         revids.append(rev.revid)
         # destroy item:
         item.destroy_item()
