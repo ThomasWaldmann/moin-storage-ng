@@ -18,6 +18,41 @@ is indexed, we can do all sorts of operations on the indexer level:
 
 We also check ACLs here. Index has ALL content, so we must be careful not
 to show data from index to a user that is not allowed to read that data.
+
+Using Whoosh (a fast pure-Python indexing and search library), we build,
+maintain and use 2 indexes:
+
+* "all revisions" index (big, needed for history search)
+* "latest revisions" index (smaller, just the current revisions)
+
+When creating or destroying revisions, indexes are automatically updated.
+
+There is also code to do a full index rebuild in case it gets damaged, lost
+or needs rebuilding for other reasons. There is also index update code to
+do a quick "intelligent" update of a "mostly ok" index, that just adds,
+updates, deletes stuff that is different in backend compared to current index.
+
+Indexing is the only layer that can easily deal with **names** (it can
+easily translate names to UUIDs and vice versa) and with **items** (it
+knows current revision, it can easily list and order historial revisions),
+using the index.
+
+The layers below are using UUIDs to identify revisions meta and data:
+
+* revid (metaid) - a UUID identifying a specific revision (revision metadata)
+* dataid - a UUID identifying some specific revision data (optional), it is
+  just stored into revision metadata.
+* itemid - a UUID identifying an item (== a set of revisions), it is just
+  stored into revision metadata. itemid is only easily usable on indexing
+  level.
+
+Many methods provided by the indexing middleware will be fast, because they
+will not access the layers below (like the backend), but just the index files,
+usually it is even just the small and thus quick latest-revs index.
+
+Indexing Middleware also checks ACLs, so a user will not see items in search
+results that he is not allowed to read. Also, trying to access a revision
+without read permission will give an AccessDenied exception.
 """
 
 
@@ -634,7 +669,8 @@ class Item(object):
         return self.itemid is not None
 
     def allows(self, capability):
-        # just a temporary hack to be able to test this without real ACL code
+        # TODO: this is just a temporary hack to be able to test this without real ACL code,
+        # replace it by a sane one later.
         # e.g. acl = "joe:read"  --> user joe may read
         if not self.indexer.acl_support:
             return True

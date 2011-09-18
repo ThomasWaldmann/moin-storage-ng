@@ -3,6 +3,9 @@
 
 """
 MoinMoin - kyoto tycoon store
+
+Stores k/v pairs into a Kyoto Tycoon server. Kyoto Tycoon is a network server
+for kyoto cabinet, remote or multi-process usage is possible).
 """
 
 

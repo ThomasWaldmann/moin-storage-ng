@@ -3,7 +3,10 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - store base classes
+MoinMoin - simple key/value stores.
+
+If some kvstore implementation you'ld like to use is missing from this package,
+you can likely implement it adding very little and rather easy code.
 """
 
 

@@ -4,9 +4,14 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - router middleware
+MoinMoin - routing middleware
 
 Routes requests to different backends depending on the item name.
+
+Just think of UNIX filesystems, fstab and mount.
+
+This middleware lets you mount backends that store items belonging to some
+specific part of the namespace. Routing middleware has same API as a backend.
 """
 
 

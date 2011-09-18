@@ -2,7 +2,13 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - sqlite3 key/value store (optionally with zlib/"gzip" compression)
+MoinMoin - sqlite3 key/value store
+
+This store stores into sqlite3 table, using a single db file in the filesystem.
+You can use the same db file for multiple stores, just using a different table
+name.
+
+Optionally, you can use zlib/"gzip" compression.
 """
 
 

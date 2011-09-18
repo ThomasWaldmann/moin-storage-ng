@@ -2,9 +2,16 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - memcached "store" (rather a CACHE, non-persistent, in RAM)
+MoinMoin - memcached store
 
-Note: does not support iteration.
+This stores k/v pairs into a server using the memcached protocol.
+
+Note:
+
+- does not support iteration.
+- if the remote server uses memory (RAM), this is non-persistent!
+  memcached uses RAM, but there might be other servers using same protocol
+  using a persistent storage.
 """
 
 

@@ -3,6 +3,8 @@
 
 """
 MoinMoin - filesystem store
+
+Store into filesystem, one file per k/v pair.
 """
 
 

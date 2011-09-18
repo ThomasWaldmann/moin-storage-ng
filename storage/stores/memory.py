@@ -2,7 +2,11 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - memory store (based on a dict)
+MoinMoin - memory store
+
+Stores k/v pairs into memory (RAM, non-persistent!).
+
+Note: likely this is mostly useful for unit tests.
 """
 
 

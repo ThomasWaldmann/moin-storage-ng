@@ -2,7 +2,15 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - backend exposing part of the filesystem (read-only)
+MoinMoin - fileserver backend, exposing part of the filesystem (read-only)
+
+Files show as single revision items.
+
+  - metadata is made up from fs metadata + mimetype guessing
+  - data is read from the file
+
+Directories create a virtual directory item, listing the files in that
+directory.
 """
 
 

@@ -4,6 +4,8 @@
 """
 MoinMoin - kyoto cabinet store
 
+Stores k/v pairs into a single kyoto cabinet file in the filesystem.
+
 Note: only ONE process can open a kyoto cabinet in OWRITER (writable) mode.
       Multithreading is allowed, but not multi-process.
       

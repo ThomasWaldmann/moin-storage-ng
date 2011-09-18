@@ -3,14 +3,19 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - backend using 2 stores
+MoinMoin - backend that ties together 2 key/value stores
 
-Usually, this will be a ByteStore for meta and a FileStore for data.
+A meta store (a ByteStore):
 
-But, you could also use other combinations, you just need to be prepared
-for the revision data datatype it returns (that is exactly what the data_store
-returns) and also feed it with the correct revision data datatype (which
-is what the data_store accepts).
+- key = revid UUID (bytes, ascii)
+- value = bytes (bytes, utf-8)
+
+A data store (a FileStore):
+
+- key = dataid UUID (bytes, ascii)
+- value = file (gets/returns open file instances, to read/write binary data)
+
+See the stores package for already implemented key/value stores.
 """
 
 
