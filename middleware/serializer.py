@@ -60,4 +60,3 @@ def deserialize(src, backend):
         backend.store(meta, limited)
         assert limited.is_exhausted
 
-

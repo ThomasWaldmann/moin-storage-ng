@@ -16,6 +16,7 @@ from StringIO import StringIO
 
 from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
 
+
 class _Storage(MutableStorageBase):
     """
     Kyoto tycoon based storage.
@@ -24,9 +25,9 @@ class _Storage(MutableStorageBase):
         """
         Store params for .open().
 
-        :param host: Tycoon server, host
-        :param port: Tycoon server, port
-        :param timeout: timeout
+        :param host: Tycoon server, host (default: '127.0.0.1')
+        :param port: Tycoon server, port (default: 1978)
+        :param timeout: timeout [s] (default: 30)
         """
         self.host = host
         self.port = port
@@ -81,7 +82,6 @@ class _Storage(MutableStorageBase):
 
 
 class BytesStorage(_Storage, BytesMutableStorageBase):
-
     def __getitem__(self, key):
         value = self.get(key)
         if value is None:

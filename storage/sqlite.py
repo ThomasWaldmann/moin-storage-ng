@@ -14,6 +14,7 @@ from sqlite3 import *
 
 from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
 
+
 class _Storage(MutableStorageBase):
     """
     A simple sqlite3 based storage.
@@ -74,6 +75,7 @@ class _Storage(MutableStorageBase):
         if compression_level:
             value = zlib.decompress(value)
         return value
+
 
 class BytesStorage(_Storage, BytesMutableStorageBase):
     def __getitem__(self, key):

@@ -8,9 +8,12 @@ MoinMoin - backend exposing part of the filesystem (read-only)
 
 from __future__ import absolute_import, division
 
-import os, errno, stat
+import os
+import errno
+import stat
 from StringIO import StringIO
 
+from config import MTIME, SIZE, CONTENTTYPE
 from backend import BackendBase
 
 
@@ -19,6 +22,9 @@ class Backend(BackendBase):
     exposes part of the filesystem (read-only)
     """
     def __init__(self, path):
+        """
+        :param path: base directory (all files/dirs below will be exposed)
+        """
         self.path = unicode(path)
 
     def open(self):
@@ -57,7 +63,7 @@ class Backend(BackendBase):
                 raise KeyError(fn)
             raise
         meta = {}
-        meta['mtime'] = int(st.st_mtime) # use int, not float
+        meta[MTIME] = int(st.st_mtime) # use int, not float
         if stat.S_ISDIR(st.st_mode):
             # directory
             # we create a virtual wiki page listing links to subitems:
@@ -77,8 +83,8 @@ class Backend(BackendBase):
             # symlink, device file, etc.
             ct = 'application/octet-stream'
             size = 0
-        meta['contenttype'] = ct
-        meta['size'] = size
+        meta[CONTENTTYPE] = ct
+        meta[SIZE] = size
         return meta
 
     def _make_directory_page(self, path):

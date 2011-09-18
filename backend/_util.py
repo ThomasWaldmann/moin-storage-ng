@@ -31,8 +31,8 @@ class TrackingFileWrapper(object):
             raise ValueError("file needs to be at pos 0")
 
     def read(self, size=None):
-        #XXX: workaround for werkzeug.wsgi.LimitedStream
-        #     which expects None instead of -1 for read everything
+        # XXX: workaround for werkzeug.wsgi.LimitedStream
+        #      which expects None instead of -1 for "read everything"
         if size is None:
             data = self._read()
             self._finished = True
@@ -43,7 +43,7 @@ class TrackingFileWrapper(object):
         self._hash.update(data)
         self._size += len(data)
         return data
-    
+
     @property
     def size(self):
         if not self._finished:

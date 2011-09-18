@@ -63,7 +63,7 @@ def make_storage(request):
     klass = getattr(storemodule, kind)
     construct = constructors.get(storename)
     if construct is None:
-        pytest.xfail('don\'t know how to construct %s store' % (storename,))
+        pytest.xfail('don\'t know how to construct %s store' % (storename, ))
     store = construct(klass, tmpdir)
     store.create()
     store.open()

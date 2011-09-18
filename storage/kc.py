@@ -22,6 +22,7 @@ from kyotocabinet import *
 
 from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
 
+
 class _Storage(MutableStorageBase):
     """
     Kyoto cabinet based storage.

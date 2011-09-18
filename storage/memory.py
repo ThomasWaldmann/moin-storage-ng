@@ -12,6 +12,7 @@ from StringIO import StringIO
 
 from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
 
+
 class _Storage(MutableStorageBase):
     """
     A simple dict-based in-memory storage. No persistence!
@@ -47,3 +48,4 @@ class FileStorage(_Storage, FileMutableStorageBase):
 
     def __setitem__(self, key, stream):
         self._st[key] = stream.read()
+

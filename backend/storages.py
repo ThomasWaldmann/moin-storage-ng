@@ -17,11 +17,9 @@ is what the data_store accepts).
 from __future__ import absolute_import, division
 
 from uuid import uuid4
-
 make_uuid = lambda: unicode(uuid4().hex)
-UUID_LEN = len(make_uuid())
 
-from config import REVID, HASH_ALGORITHM
+from config import REVID, DATAID, SIZE, HASH_ALGORITHM
 
 from backend import BackendBase, MutableBackendBase
 from backend._util import TrackingFileWrapper
@@ -37,6 +35,10 @@ class Backend(BackendBase):
     ties together a store for metadata and a store for data, readonly
     """
     def __init__(self, meta_store, data_store):
+        """
+        :param meta_store: a ByteStorage for metadata
+        :param data_store: a FileStorage for data
+        """
         self.meta_store = meta_store
         self.data_store = data_store
 
@@ -74,7 +76,7 @@ class Backend(BackendBase):
 
     def retrieve(self, metaid):
         meta = self._get_meta(metaid)
-        dataid = meta['dataid']
+        dataid = meta[DATAID]
         data = self._get_data(dataid)
         return meta, data
 
@@ -112,17 +114,18 @@ class MutableBackend(Backend, MutableBackendBase):
         # XXX Idea: we could check the type the store wants from us:
         # if it is a str/bytes (BytesStorage), just use meta "as is",
         # if it is a file (FileStorage), wrap it into StringIO and give that to the store.
-        if 'dataid' not in meta:
+        if DATAID not in meta:
             tfw = TrackingFileWrapper(data, hash_method=HASH_ALGORITHM)
             dataid = make_uuid()
             self.data_store[dataid] = tfw
-            meta['dataid'] = dataid
-            size_expected = meta.get('size')
+            meta[DATAID] = dataid
+            # check whether size and hash are consistent:
+            size_expected = meta.get(SIZE)
             size_real = tfw.size
             if size_expected is not None and size_expected != size_real:
                 raise ValueError("computed data size (%d) does not match data size declared in metadata (%d)" % (
                                  size_real, size_expected))
-            meta['size'] = size_real
+            meta[SIZE] = size_real
             hash_expected = meta.get(HASH_ALGORITHM)
             hash_real = tfw.hash.hexdigest()
             if hash_expected is not None and hash_expected != hash_real:
@@ -130,7 +133,7 @@ class MutableBackend(Backend, MutableBackendBase):
                                  hash_real, hash_expected))
             meta[HASH_ALGORITHM] = hash_real
         else:
-            dataid = meta['dataid']
+            dataid = meta[DATAID]
             # we will just asume stuff is correct if you pass it with a data id
             if dataid not in self.data_store:
                 self.data_store[dataid] = data
@@ -146,7 +149,7 @@ class MutableBackend(Backend, MutableBackendBase):
 
     def remove(self, metaid):
         meta = self._get_meta(metaid)
-        dataid = meta['dataid']
+        dataid = meta[DATAID]
         self._del_meta(metaid)
         self._del_data(dataid)
 

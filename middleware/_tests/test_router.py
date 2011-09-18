@@ -24,8 +24,8 @@ from storage.memory import FileStorage as MemoryFileStorage
 def make_ro_backend():
     store = StorageBackend(MemoryBytesStorage(), MemoryFileStorage())
     store.create()
-    store.store({NAME:'test'}, StringIO(''))
-    store.store({NAME:'test2'}, StringIO(''))
+    store.store({NAME: 'test'}, StringIO(''))
+    store.store({NAME: 'test2'}, StringIO(''))
     return ROBackend(store.meta_store, store.data_store)
 
 
@@ -34,7 +34,7 @@ def pytest_funcarg__router(request):
     root_be = StorageBackend(MemoryBytesStorage(), MemoryFileStorage())
     sub_be = StorageBackend(MemoryBytesStorage(), MemoryFileStorage())
     ro_be = make_ro_backend()
-    router = RouterBackend([('sub', sub_be),('ro',ro_be), ('', root_be)])
+    router = RouterBackend([('sub', sub_be), ('ro', ro_be), ('', root_be)])
     router.open()
     router.create()
 

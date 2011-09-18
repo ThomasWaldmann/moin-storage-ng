@@ -27,7 +27,8 @@ class TestMemoryBackend(MutableBackendTestBase):
         self.be.create()
         self.be.open()
 
-import os, tempfile
+import os
+import tempfile
 
 from storage.fs import BytesStorage as FSBytesStorage
 from storage.fs import FileStorage as FSFileStorage

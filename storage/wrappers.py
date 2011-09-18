@@ -2,7 +2,7 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - wrappers
+MoinMoin - storage wrappers
 """
 
 
@@ -14,6 +14,11 @@ from collections import MutableMapping
 
 class ByteToStreamWrappingStore(MutableMapping):
     def __init__(self, stream_store):
+        """
+        Wrap a file store so it can be used like a byte store.
+
+        :param stream_store: the file/stream store to wrap
+        """
         self._st = stream_store
 
     def __iter__(self):

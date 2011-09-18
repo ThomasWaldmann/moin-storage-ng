@@ -26,7 +26,6 @@ contents = [
 ]
 
 
-
 scenarios = [
     ('Simple', ['']),
     ('Nested', ['', 'Subdir']),
@@ -80,5 +79,5 @@ def test_serialize_deserialize(source, target):
 
     print sorted(source.backend)
     print sorted(target.backend)
-    assert sorted(source.backend)  == sorted(target.backend)
+    assert sorted(source.backend) == sorted(target.backend)
 

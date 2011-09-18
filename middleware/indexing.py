@@ -26,13 +26,12 @@ from __future__ import absolute_import, division
 import os
 import shutil
 import itertools
-import time, datetime
+import time
+import datetime
 from StringIO import StringIO
 
 from uuid import uuid4
-
 make_uuid = lambda: unicode(uuid4().hex)
-UUID_LEN = len(make_uuid())
 
 import logging
 
@@ -359,7 +358,7 @@ class IndexingMiddleware(object):
         """
         Add all items/revisions from the backends of this wiki to the index
         (which is expected to have no items/revisions from this wiki yet).
-        
+
         Note: index might be shared by multiple wikis, so it is:
               create, rebuild wiki1, rebuild wiki2, ...
               create (tmp), rebuild wiki1, rebuild wiki2, ..., move
@@ -388,7 +387,7 @@ class IndexingMiddleware(object):
         * after a full rebuild that was done at tmp location
         * after wiki is made read-only or taken offline
         * after the index was moved to the normal index location
-        
+
         Reason: new revisions that were created after the rebuild started might be missing in new index.
 
         :returns: index changed (bool)
@@ -617,7 +616,7 @@ class Item(object):
         if not item:
             return item
         raise ItemAlreadyExists(repr(query))
-        
+
     @classmethod
     def existing(cls, indexer, user_name=None, **query):
         """
@@ -651,7 +650,6 @@ class Item(object):
     def require(self, capability):
         if not self.allows(capability):
             raise AccessDenied("item does not allow user '%r' to '%r'" % (self.user_name, capability))
-
 
     def iter_revs(self):
         """
@@ -720,7 +718,7 @@ class Item(object):
         self.require('destroy')
         self.backend.remove(revid)
         self.indexer.remove_revision(revid)
-        
+
     def destroy_all_revisions(self):
         """
         Destroy all revisions of this item.

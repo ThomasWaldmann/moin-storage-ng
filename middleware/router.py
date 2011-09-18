@@ -16,6 +16,7 @@ from config import NAME
 
 from backend import BackendBase, MutableBackendBase
 
+
 class Backend(MutableBackendBase):
     """
     router, behaves readonly for readonly mounts
@@ -82,13 +83,13 @@ class Backend(MutableBackendBase):
         for mountpoint, backend in self.mapping:
             if isinstance(backend, MutableBackendBase):
                 backend.create()
-            #XXX log info?
+            #XXX else: log info?
 
     def destroy(self):
         for mountpoint, backend in self.mapping:
             if isinstance(backend, MutableBackendBase):
                 backend.destroy()
-            #XXX log info?
+            #XXX else: log info?
 
     def store(self, meta, data):
         itemname = meta[NAME]

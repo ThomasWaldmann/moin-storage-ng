@@ -8,7 +8,9 @@ MoinMoin - filesystem storage
 
 from __future__ import absolute_import, division
 
-import os, errno, shutil
+import os
+import errno
+import shutil
 
 from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
 
@@ -20,6 +22,9 @@ class _Storage(MutableStorageBase):
     keys are required to be valid filenames.
     """
     def __init__(self, path):
+        """
+        :param path: base directory used for this storage
+        """
         self.path = path
 
     def create(self):
@@ -68,3 +73,4 @@ class FileStorage(_Storage, FileMutableStorageBase):
         with open(self._mkpath(key), "wb") as f:
             blocksize = 64 * 1024
             shutil.copyfileobj(stream, f, blocksize)
+

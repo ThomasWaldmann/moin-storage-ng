@@ -382,7 +382,7 @@ class TestProtectedIndexingMiddleware(object):
         item = self.imw[item_name]
         with pytest.raises(AccessDenied):
             r = item[revid_secret]
-    
+
     def test_perf_create_only(self):
         pytest.skip("usually we do no performance tests")
         # determine create revisions performance

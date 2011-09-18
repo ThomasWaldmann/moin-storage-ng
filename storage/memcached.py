@@ -16,11 +16,16 @@ import memcache
 
 from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
 
+
 class _Storage(MutableStorageBase):
     """
     A simple dict-based in-memory storage. No persistence!
     """
     def __init__(self, servers=['localhost:11211'], debug=0):
+        """
+        :param servers: list of memcached servers (default: ['localhost:11211'])
+        :param debug: debug parameter given to memcache.Client (default: 0)
+        """
         self.servers = servers
         self.debug = debug
 
