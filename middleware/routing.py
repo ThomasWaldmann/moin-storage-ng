@@ -14,7 +14,7 @@ from __future__ import absolute_import, division
 
 from config import NAME
 
-from backend import BackendBase, MutableBackendBase
+from backends import BackendBase, MutableBackendBase
 
 
 class Backend(MutableBackendBase):

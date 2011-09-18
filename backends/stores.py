@@ -21,8 +21,8 @@ make_uuid = lambda: unicode(uuid4().hex)
 
 from config import REVID, DATAID, SIZE, HASH_ALGORITHM
 
-from backend import BackendBase, MutableBackendBase
-from backend._util import TrackingFileWrapper
+from backends import BackendBase, MutableBackendBase
+from backends._util import TrackingFileWrapper
 
 try:
     import json

@@ -14,7 +14,7 @@ import stat
 from StringIO import StringIO
 
 from config import MTIME, SIZE, CONTENTTYPE
-from backend import BackendBase
+from backends import BackendBase
 
 
 class Backend(BackendBase):

@@ -14,8 +14,8 @@ import tempfile
 import pytest
 
 from config import MTIME
-from backend.fileserver import Backend
-from backend._tests import BackendTestBase
+from backends.fileserver import Backend
+from backends._tests import BackendTestBase
 
 
 class TestFileServerBackend(BackendTestBase):

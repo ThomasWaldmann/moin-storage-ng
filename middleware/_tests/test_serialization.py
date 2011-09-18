@@ -12,7 +12,7 @@ from stores.memory import BytesStore, FileStore
 
 from middleware.indexing import IndexingMiddleware, AccessDenied
 from middleware.serialization import serialize, deserialize
-from backend.stores import MutableBackend
+from backends.stores import MutableBackend
 
 
 from StringIO import StringIO

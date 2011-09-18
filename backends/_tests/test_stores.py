@@ -13,8 +13,8 @@ from __future__ import absolute_import, division
 
 import pytest
 
-from backend.stores import MutableBackend
-from backend._tests import MutableBackendTestBase
+from backends.stores import MutableBackend
+from backends._tests import MutableBackendTestBase
 
 from stores.memory import BytesStore as MemoryBytesStore
 from stores.memory import FileStore as MemoryFileStore
