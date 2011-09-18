@@ -10,7 +10,7 @@ from __future__ import absolute_import, division
 
 from StringIO import StringIO
 
-from stores import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
+from . import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
 
 
 class _Store(MutableStoreBase):

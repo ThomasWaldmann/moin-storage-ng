@@ -12,7 +12,7 @@ from StringIO import StringIO
 import zlib
 from sqlite3 import *
 
-from stores import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
+from . import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
 
 
 class _Store(MutableStoreBase):

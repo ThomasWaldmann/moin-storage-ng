@@ -14,7 +14,7 @@ from StringIO import StringIO
 
 import memcache
 
-from stores import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
+from . import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
 
 
 class _Store(MutableStoreBase):

@@ -10,7 +10,8 @@ MoinMoin - fs store tests
 from __future__ import absolute_import, division
 
 import pytest
-from stores.fs import BytesStore, FileStore
+
+from ..fs import BytesStore, FileStore
 
 
 @pytest.mark.multi(Store=[BytesStore, FileStore])

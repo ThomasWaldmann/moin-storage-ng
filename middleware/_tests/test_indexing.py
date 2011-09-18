@@ -15,11 +15,12 @@ import pytest
 
 from config import NAME, SIZE, ITEMID, REVID, DATAID, HASH_ALGORITHM, CONTENT, COMMENT
 
-from middleware.indexing import IndexingMiddleware, AccessDenied
-from backends.stores import MutableBackend
+from ..indexing import IndexingMiddleware, AccessDenied
 
+from backends.stores import MutableBackend
 from stores.memory import BytesStore as MemoryBytesStore
 from stores.memory import FileStore as MemoryFileStore
+
 
 class TestIndexingMiddleware(object):
     def setup_method(self, method):

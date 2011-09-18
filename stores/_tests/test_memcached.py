@@ -11,8 +11,9 @@ Note: you need to have a memcached running on localhost:11211 for the tests
 
 from __future__ import absolute_import, division
 
-from stores.memcached import BytesStore, FileStore
-from stores._tests import BytesStoreTestBase, FileStoreTestBase
+from ..memcached import BytesStore, FileStore
+
+from . import BytesStoreTestBase, FileStoreTestBase
 
 
 class TestBytesStore(BytesStoreTestBase):

@@ -12,7 +12,7 @@ from __future__ import absolute_import, division
 import pytest
 pytest.importorskip('stores.kt')
 
-from stores.kt import BytesStore, FileStore
+from ..kt import BytesStore, FileStore
 
 
 @pytest.mark.multi(Store=[BytesStore, FileStore])

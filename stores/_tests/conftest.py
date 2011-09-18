@@ -9,7 +9,9 @@ MoinMoin - store test magic
 from __future__ import absolute_import, division
 
 import pytest
-from stores.wrappers import ByteToStreamWrappingStore
+from ..wrappers import ByteToStreamWrappingStore
+
+STORES_PACKAGE = 'stores'
 
 # memcached is not in the loop
 STORES = 'fs kc kt memory sqlite sqlite:compressed'.split()
@@ -59,7 +61,7 @@ def pytest_generate_tests(metafunc):
 def make_store(request):
     tmpdir = request.getfuncargvalue('tmpdir')
     storename, kind = request.param
-    storemodule = pytest.importorskip('stores.' + storename.split(':')[0])
+    storemodule = pytest.importorskip(STORES_PACKAGE + '.' + storename.split(':')[0])
     klass = getattr(storemodule, kind)
     construct = constructors.get(storename)
     if construct is None:

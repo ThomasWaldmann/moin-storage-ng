@@ -8,7 +8,8 @@ MoinMoin - sqlite store tests
 
 
 import pytest
-from stores.sqlite import BytesStore, FileStore
+
+from ..sqlite import BytesStore, FileStore
 
 def bytes_compressed(path):
     return BytesStore(path, 'test_table', compression_level=1)

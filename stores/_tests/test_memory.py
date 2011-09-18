@@ -7,7 +7,8 @@ MoinMoin - memory store tests
 """
 
 import pytest
-from stores.memory import BytesStore, FileStore
+
+from ..memory import BytesStore, FileStore
 
 
 @pytest.mark.multi(Store=[BytesStore, FileStore])

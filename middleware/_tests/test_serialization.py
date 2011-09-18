@@ -8,14 +8,14 @@ MoinMoin - serializer / deserializer tests
 
 from __future__ import absolute_import, division
 
+from StringIO import StringIO
+
+from ..indexing import IndexingMiddleware, AccessDenied
+from ..serialization import serialize, deserialize
+
+from backends.stores import MutableBackend
 from stores.memory import BytesStore, FileStore
 
-from middleware.indexing import IndexingMiddleware, AccessDenied
-from middleware.serialization import serialize, deserialize
-from backends.stores import MutableBackend
-
-
-from StringIO import StringIO
 
 contents = [
     (u'Foo', {'name': u'Foo'}, ''),

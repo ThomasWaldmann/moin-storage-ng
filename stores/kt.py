@@ -14,7 +14,7 @@ from httplib import HTTPConnection
 
 from StringIO import StringIO
 
-from stores import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
+from . import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
 
 
 class _Store(MutableStoreBase):

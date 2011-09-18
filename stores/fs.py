@@ -12,7 +12,7 @@ import os
 import errno
 import shutil
 
-from stores import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
+from . import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
 
 
 class _Store(MutableStoreBase):
