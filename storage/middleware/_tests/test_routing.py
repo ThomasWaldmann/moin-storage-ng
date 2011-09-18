@@ -16,9 +16,9 @@ from config import NAME, REVID
 
 from ..routing import Backend as RouterBackend
 
-from backends.stores import MutableBackend as StoreBackend, Backend as ROBackend
-from stores.memory import BytesStore as MemoryBytesStore
-from stores.memory import FileStore as MemoryFileStore
+from storage.backends.stores import MutableBackend as StoreBackend, Backend as ROBackend
+from storage.stores.memory import BytesStore as MemoryBytesStore
+from storage.stores.memory import FileStore as MemoryFileStore
 
 
 def make_ro_backend():

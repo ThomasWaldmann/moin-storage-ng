@@ -11,7 +11,7 @@ from __future__ import absolute_import, division
 import pytest
 from ..wrappers import ByteToStreamWrappingStore
 
-STORES_PACKAGE = 'stores'
+STORES_PACKAGE = 'storage.stores'
 
 # memcached is not in the loop
 STORES = 'fs kc kt memory sqlite sqlite:compressed'.split()

@@ -16,8 +16,8 @@ import pytest
 from ..stores import MutableBackend
 from . import MutableBackendTestBase
 
-from stores.memory import BytesStore as MemoryBytesStore
-from stores.memory import FileStore as MemoryFileStore
+from storage.stores.memory import BytesStore as MemoryBytesStore
+from storage.stores.memory import FileStore as MemoryFileStore
 
 class TestMemoryBackend(MutableBackendTestBase):
     def setup_method(self, method):
@@ -30,8 +30,8 @@ class TestMemoryBackend(MutableBackendTestBase):
 import os
 import tempfile
 
-from stores.fs import BytesStore as FSBytesStore
-from stores.fs import FileStore as FSFileStore
+from storage.stores.fs import BytesStore as FSBytesStore
+from storage.stores.fs import FileStore as FSFileStore
 
 class TestFSBackend(MutableBackendTestBase):
     def setup_method(self, method):
