@@ -3,7 +3,7 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - storage base classes
+MoinMoin - store base classes
 """
 
 
@@ -14,9 +14,9 @@ from abc import abstractmethod
 from collections import Mapping, MutableMapping
 
 
-class StorageBase(Mapping):
+class StoreBase(Mapping):
     """
-    A read-only storage backend is a simple key/value store.
+    A simple read-only key/value store.
     """
     def __init__(self, **kw):
         """
@@ -26,18 +26,18 @@ class StorageBase(Mapping):
 
     def open(self):
         """
-        open the storage, prepare it for usage
+        open the store, prepare it for usage
         """
 
     def close(self):
         """
-        close the storage, stop using it, free resources (except stored data)
+        close the store, stop using it, free resources (except stored data)
         """
 
     @abstractmethod
     def __iter__(self):
         """
-        iterate over keys present in the storage
+        iterate over keys present in the store
         """
 
     def __len__(self):
@@ -50,7 +50,7 @@ class StorageBase(Mapping):
         """
 
 
-class BytesStorageBase(StorageBase):
+class BytesStoreBase(StoreBase):
     @abstractmethod
     def __getitem__(self, key):
         """
@@ -58,7 +58,7 @@ class BytesStorageBase(StorageBase):
         """
 
 
-class FileStorageBase(StorageBase):
+class FileStoreBase(StoreBase):
     @abstractmethod
     def __getitem__(self, key):
         """
@@ -69,18 +69,18 @@ class FileStorageBase(StorageBase):
         """
 
 
-class MutableStorageBase(StorageBase, MutableMapping):
+class MutableStoreBase(StoreBase, MutableMapping):
     """
-    A read/write storage backend is a simple key/value store.
+    A simple read/write key/value store.
     """
     def create(self):
         """
-        create an empty storage
+        create an empty store
         """
 
     def destroy(self):
         """
-        destroy the storage (erase all stored data, remove storage)
+        destroy the store (erase all stored data, remove store)
         """
 
     @abstractmethod
@@ -92,11 +92,11 @@ class MutableStorageBase(StorageBase, MutableMapping):
     @abstractmethod
     def __delitem__(self, key):
         """
-        delete the key, dereference the related value in the storage
+        delete the key, dereference the related value in the store
         """
 
 
-class BytesMutableStorageBase(MutableStorageBase):
+class BytesMutableStoreBase(MutableStoreBase):
     @abstractmethod
     def __setitem__(self, key, value):
         """
@@ -104,7 +104,7 @@ class BytesMutableStorageBase(MutableStorageBase):
         """
 
 
-class FileMutableStorageBase(MutableStorageBase):
+class FileMutableStoreBase(MutableStoreBase):
     @abstractmethod
     def __setitem__(self, key, stream):
         """

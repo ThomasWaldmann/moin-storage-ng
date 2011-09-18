@@ -3,22 +3,22 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - fs storage tests
+MoinMoin - fs store tests
 """
 
 
 from __future__ import absolute_import, division
 
 import pytest
-from storage.fs import BytesStorage, FileStorage
+from stores.fs import BytesStore, FileStore
 
 
-@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
-def test_create(tmpdir, Storage):
+@pytest.mark.multi(Store=[BytesStore, FileStore])
+def test_create(tmpdir, Store):
     target = tmpdir.join('store')
     assert not target.check()
 
-    store = Storage(str(target))
+    store = Store(str(target))
     assert not target.check()
     store.create()
     assert target.check()
@@ -26,9 +26,9 @@ def test_create(tmpdir, Storage):
     return store
 
 
-@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
-def test_destroy(tmpdir, Storage):
-    store = test_create(tmpdir, Storage)
+@pytest.mark.multi(Store=[BytesStore, FileStore])
+def test_destroy(tmpdir, Store):
+    store = test_create(tmpdir, Store)
     target = tmpdir.join('store')
     store.destroy()
     assert not target.check()

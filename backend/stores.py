@@ -3,9 +3,9 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - backend using 2 storages
+MoinMoin - backend using 2 stores
 
-Usually, this will be a ByteStorage for meta and a FileStorage for data.
+Usually, this will be a ByteStore for meta and a FileStore for data.
 
 But, you could also use other combinations, you just need to be prepared
 for the revision data datatype it returns (that is exactly what the data_store
@@ -36,8 +36,8 @@ class Backend(BackendBase):
     """
     def __init__(self, meta_store, data_store):
         """
-        :param meta_store: a ByteStorage for metadata
-        :param data_store: a FileStorage for data
+        :param meta_store: a ByteStore for metadata
+        :param data_store: a FileStore for data
         """
         self.meta_store = meta_store
         self.data_store = data_store
@@ -105,15 +105,15 @@ class MutableBackend(Backend, MutableBackendBase):
         metaid = meta[REVID]
         meta = self._serialize(meta)
         # XXX Idea: we could check the type the store wants from us:
-        # if it is a str/bytes (BytesStorage), just use meta "as is",
-        # if it is a file (FileStorage), wrap it into StringIO and give that to the store.
+        # if it is a str/bytes (BytesStore), just use meta "as is",
+        # if it is a file (FileStore), wrap it into StringIO and give that to the store.
         self.meta_store[metaid] = meta
         return metaid
 
     def store(self, meta, data):
         # XXX Idea: we could check the type the store wants from us:
-        # if it is a str/bytes (BytesStorage), just use meta "as is",
-        # if it is a file (FileStorage), wrap it into StringIO and give that to the store.
+        # if it is a str/bytes (BytesStore), just use meta "as is",
+        # if it is a file (FileStore), wrap it into StringIO and give that to the store.
         if DATAID not in meta:
             tfw = TrackingFileWrapper(data, hash_method=HASH_ALGORITHM)
             dataid = make_uuid()

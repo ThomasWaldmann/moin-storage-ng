@@ -8,11 +8,11 @@ MoinMoin - serializer / deserializer tests
 
 from __future__ import absolute_import, division
 
-from storage.memory import BytesStorage, FileStorage
+from stores.memory import BytesStore, FileStore
 
 from middleware.indexing import IndexingMiddleware, AccessDenied
 from middleware.serialization import serialize, deserialize
-from backend.storages import MutableBackend
+from backend.stores import MutableBackend
 
 
 from StringIO import StringIO
@@ -47,8 +47,8 @@ def make_middleware(request):
     tmpdir = request.getfuncargvalue('tmpdir')
     # scenario
 
-    meta_store = BytesStorage()
-    data_store = FileStorage()
+    meta_store = BytesStore()
+    data_store = FileStore()
     backend = MutableBackend(meta_store, data_store)
     backend.create()
     backend.open()

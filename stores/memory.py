@@ -2,7 +2,7 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - memory storage (based on a dict)
+MoinMoin - memory store (based on a dict)
 """
 
 
@@ -10,12 +10,12 @@ from __future__ import absolute_import, division
 
 from StringIO import StringIO
 
-from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
+from stores import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
 
 
-class _Storage(MutableStorageBase):
+class _Store(MutableStoreBase):
     """
-    A simple dict-based in-memory storage. No persistence!
+    A simple dict-based in-memory store. No persistence!
     """
     def __init__(self):
         self._st = None
@@ -34,7 +34,7 @@ class _Storage(MutableStorageBase):
         del self._st[key]
 
 
-class BytesStorage(_Storage, BytesMutableStorageBase):
+class BytesStore(_Store, BytesMutableStoreBase):
     def __getitem__(self, key):
         return self._st[key]
 
@@ -42,7 +42,7 @@ class BytesStorage(_Storage, BytesMutableStorageBase):
         self._st[key] = value
 
 
-class FileStorage(_Storage, FileMutableStorageBase):
+class FileStore(_Store, FileMutableStoreBase):
     def __getitem__(self, key):
         return StringIO(self._st[key])
 

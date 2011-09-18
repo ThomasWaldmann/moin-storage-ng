@@ -2,7 +2,7 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - kyoto tycoon storage
+MoinMoin - kyoto tycoon store
 """
 
 
@@ -14,12 +14,12 @@ from httplib import HTTPConnection
 
 from StringIO import StringIO
 
-from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
+from stores import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
 
 
-class _Storage(MutableStorageBase):
+class _Store(MutableStoreBase):
     """
-    Kyoto tycoon based storage.
+    Kyoto tycoon based store.
     """
     def __init__(self, host='127.0.0.1', port=1978, timeout=30):
         """
@@ -70,7 +70,7 @@ class _Storage(MutableStorageBase):
     def __iter__(self):
         cursor_id = '0'
         status, _ = self._rpc('cur_jump', DB=None, CUR=cursor_id, key=None)
-        # we may get status != 200 early, if there is nothing at all in the storage
+        # we may get status != 200 early, if there is nothing at all in the store
         while status == 200:
             status, result = self._rpc('cur_get_key', CUR=cursor_id, step=True)
             if status == 200:
@@ -81,7 +81,7 @@ class _Storage(MutableStorageBase):
         assert status == 200
 
 
-class BytesStorage(_Storage, BytesMutableStorageBase):
+class BytesStore(_Store, BytesMutableStoreBase):
     def __getitem__(self, key):
         value = self.get(key)
         if value is None:
@@ -116,7 +116,7 @@ class BytesStorage(_Storage, BytesMutableStorageBase):
         return response.status == 201
 
 
-class FileStorage(_Storage, FileMutableStorageBase):
+class FileStore(_Store, FileMutableStoreBase):
     def __getitem__(self, key):
         value = self.get(key)
         if value is None:

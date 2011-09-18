@@ -3,24 +3,24 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - kyoto cabinet storage tests
+MoinMoin - kyoto cabinet store tests
 """
 
 
 from __future__ import absolute_import, division
 
 import pytest
-pytest.importorskip('storage.kc')
+pytest.importorskip('stores.kc')
 
-from storage.kc import BytesStorage, FileStorage
+from stores.kc import BytesStore, FileStore
 
 
-@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
-def test_create(tmpdir, Storage):
+@pytest.mark.multi(Store=[BytesStore, FileStore])
+def test_create(tmpdir, Store):
     target = tmpdir.join('store.kch')
     assert not target.check()
 
-    store = Storage(str(target))
+    store = Store(str(target))
     assert not target.check()
     store.create()
     assert target.check()
@@ -28,9 +28,9 @@ def test_create(tmpdir, Storage):
     return store
 
 
-@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
-def test_destroy(tmpdir, Storage):
-    store = test_create(tmpdir, Storage)
+@pytest.mark.multi(Store=[BytesStore, FileStore])
+def test_destroy(tmpdir, Store):
+    store = test_create(tmpdir, Store)
     target = tmpdir.join('store.kch')
     store.destroy()
     assert not target.check()

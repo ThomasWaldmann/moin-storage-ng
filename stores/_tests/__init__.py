@@ -2,14 +2,14 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - storage tests
+MoinMoin - store tests
 """
 
 
-class FileStorageTestBase(object):
+class FileStoreTestBase(object):
     pass
 
 
-class BytesStorageTestBase(object):
+class BytesStoreTestBase(object):
     pass
 

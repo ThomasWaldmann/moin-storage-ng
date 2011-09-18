@@ -2,7 +2,7 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - filesystem storage
+MoinMoin - filesystem store
 """
 
 
@@ -12,18 +12,18 @@ import os
 import errno
 import shutil
 
-from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
+from stores import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
 
 
-class _Storage(MutableStorageBase):
+class _Store(MutableStoreBase):
     """
-    A simple filesystem-based storage.
+    A simple filesystem-based store.
 
     keys are required to be valid filenames.
     """
     def __init__(self, path):
         """
-        :param path: base directory used for this storage
+        :param path: base directory used for this store
         """
         self.path = path
 
@@ -45,7 +45,7 @@ class _Storage(MutableStorageBase):
         os.remove(self._mkpath(key))
 
 
-class BytesStorage(_Storage, BytesMutableStorageBase):
+class BytesStore(_Store, BytesMutableStoreBase):
     def __getitem__(self, key):
         try:
             with open(self._mkpath(key), 'rb') as f:
@@ -60,7 +60,7 @@ class BytesStorage(_Storage, BytesMutableStorageBase):
             f.write(value)
 
 
-class FileStorage(_Storage, FileMutableStorageBase):
+class FileStore(_Store, FileMutableStoreBase):
     def __getitem__(self, key):
         try:
             return open(self._mkpath(key), 'rb')

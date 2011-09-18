@@ -3,24 +3,24 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - sqlite storage tests
+MoinMoin - sqlite store tests
 """
 
 
 import pytest
-from storage.sqlite import BytesStorage, FileStorage
+from stores.sqlite import BytesStore, FileStore
 
 def bytes_compressed(path):
-    return BytesStorage(path, 'test_table', compression_level=1)
+    return BytesStore(path, 'test_table', compression_level=1)
 def bytes_uncompressed(path):
-    return BytesStorage(path, 'test_table', compression_level=0)
+    return BytesStore(path, 'test_table', compression_level=0)
 
 def file_compressed(path):
-    return FileStorage(path, 'test_table', compression_level=1)
+    return FileStore(path, 'test_table', compression_level=1)
 def file_uncompressed(path):
-    return FileStorage(path, 'test_table', compression_level=0)
+    return FileStore(path, 'test_table', compression_level=0)
 
-all_setups = pytest.mark.multi(Storage=[
+all_setups = pytest.mark.multi(Store=[
     bytes_uncompressed,
     bytes_compressed,
     file_uncompressed,
@@ -29,19 +29,19 @@ all_setups = pytest.mark.multi(Storage=[
 
 
 @all_setups
-def test_create(tmpdir, Storage):
+def test_create(tmpdir, Store):
     dbfile = tmpdir.join('store.sqlite')
     assert not dbfile.check()
-    store = Storage(str(dbfile))
+    store = Store(str(dbfile))
     assert not dbfile.check()
     store.create()
     assert dbfile.check()
     return store
 
 @all_setups
-def test_destroy(tmpdir, Storage):
+def test_destroy(tmpdir, Store):
     dbfile = tmpdir.join('store.sqlite')
-    store = test_create(tmpdir, Storage)
+    store = test_create(tmpdir, Store)
     store.destroy()
     # XXX: check for dropped table
 

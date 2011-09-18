@@ -15,14 +15,14 @@ import pytest
 from config import NAME, REVID
 
 from middleware.routing import Backend as RouterBackend
-from backend.storages import MutableBackend as StorageBackend, Backend as ROBackend
+from backend.stores import MutableBackend as StoreBackend, Backend as ROBackend
 
-from storage.memory import BytesStorage as MemoryBytesStorage
-from storage.memory import FileStorage as MemoryFileStorage
+from stores.memory import BytesStore as MemoryBytesStore
+from stores.memory import FileStore as MemoryFileStore
 
 
 def make_ro_backend():
-    store = StorageBackend(MemoryBytesStorage(), MemoryFileStorage())
+    store = StoreBackend(MemoryBytesStore(), MemoryFileStore())
     store.create()
     store.store({NAME: 'test'}, StringIO(''))
     store.store({NAME: 'test2'}, StringIO(''))
@@ -31,8 +31,8 @@ def make_ro_backend():
 
 
 def pytest_funcarg__router(request):
-    root_be = StorageBackend(MemoryBytesStorage(), MemoryFileStorage())
-    sub_be = StorageBackend(MemoryBytesStorage(), MemoryFileStorage())
+    root_be = StoreBackend(MemoryBytesStore(), MemoryFileStore())
+    sub_be = StoreBackend(MemoryBytesStore(), MemoryFileStore())
     ro_be = make_ro_backend()
     router = RouterBackend([('sub', sub_be), ('ro', ro_be), ('', root_be)])
     router.open()

@@ -55,7 +55,7 @@ The layers below are using UUIDs to identify revisions meta and data:
   level.
 
 Many methods provided by the indexing middleware will be fast, because they
-will not access the layers below (like the storage), but just the index files,
+will not access the layers below (like the backend), but just the index files,
 usually it is even just the small and thus quick latest-revs index.
 
 Indexing Middleware also checks ACLs, so a user will not see items in search
@@ -75,18 +75,18 @@ Lets you mount backends that store items belonging to some specific part
 of the namespace. Router middleware has same API as a backend.
 
 
-"storages" Backend
-==================
-This is a backend that ties together 2 key/value storages:
+"stores" Backend
+================
+This is a backend that ties together 2 key/value stores:
 
-* meta storage
+* meta store
   - key = revid UUID (bytes, ascii)
   - value = bytes (bytes, utf-8)
-* data storage
+* data store
   - key = dataid UUID (bytes, ascii)
   - value = file (gets/returns open file instances, to read/write binary data)
 
-Already implemented key/value storages:
+Already implemented key/value stores:
 
 * fs (stores into filesystem)
 * sqlite (stores into sqlite3 table, single db file in the filesystem)

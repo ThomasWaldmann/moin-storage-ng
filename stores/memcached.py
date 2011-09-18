@@ -2,7 +2,7 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - memcached "storage" (rather a CACHE, non-persistent, in RAM)
+MoinMoin - memcached "store" (rather a CACHE, non-persistent, in RAM)
 
 Note: does not support iteration.
 """
@@ -14,12 +14,12 @@ from StringIO import StringIO
 
 import memcache
 
-from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
+from stores import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
 
 
-class _Storage(MutableStorageBase):
+class _Store(MutableStoreBase):
     """
-    A simple dict-based in-memory storage. No persistence!
+    A simple dict-based in-memory store. No persistence!
     """
     def __init__(self, servers=['localhost:11211'], debug=0):
         """
@@ -49,7 +49,7 @@ class _Storage(MutableStorageBase):
         self._mc.delete(key)
 
 
-class BytesStorage(_Storage, BytesMutableStorageBase):
+class BytesStore(_Store, BytesMutableStoreBase):
     def __getitem__(self, key):
         value = self._mc.get(key)
         if value is None:
@@ -60,7 +60,7 @@ class BytesStorage(_Storage, BytesMutableStorageBase):
         self._mc.set(key, value)
 
 
-class FileStorage(_Storage, FileMutableStorageBase):
+class FileStore(_Store, FileMutableStoreBase):
     def __getitem__(self, key):
         value = self._mc.get(key)
         if value is None:

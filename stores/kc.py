@@ -2,13 +2,13 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - kyoto cabinet storage
+MoinMoin - kyoto cabinet store
 
 Note: only ONE process can open a kyoto cabinet in OWRITER (writable) mode.
       Multithreading is allowed, but not multi-process.
       
-      For multi-process, you either need to use some different storage (not
-      kyoto cabinet) or use a storage for kyoto tycoon (which is a network
+      For multi-process, you either need to use some different store (not
+      kyoto cabinet) or use a store for kyoto tycoon (which is a network
       server that uses kyoto cabinet).
 """
 
@@ -20,12 +20,12 @@ from StringIO import StringIO
 
 from kyotocabinet import *
 
-from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
+from stores import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
 
 
-class _Storage(MutableStorageBase):
+class _Store(MutableStoreBase):
     """
-    Kyoto cabinet based storage.
+    Kyoto cabinet based store.
     """
     def __init__(self, path, mode=DB.OWRITER|DB.OAUTOTRAN, db_opts=DB.GCONCURRENT):
         """
@@ -71,7 +71,7 @@ class _Storage(MutableStorageBase):
         self._db.remove(key)
 
 
-class BytesStorage(_Storage, BytesMutableStorageBase):
+class BytesStore(_Store, BytesMutableStoreBase):
     def __getitem__(self, key):
         value = self._db.get(key)
         if value is None:
@@ -83,7 +83,7 @@ class BytesStorage(_Storage, BytesMutableStorageBase):
             raise KeyError("set error: " + str(self._db.error()))
 
 
-class FileStorage(_Storage, FileMutableStorageBase):
+class FileStore(_Store, FileMutableStoreBase):
     def __getitem__(self, key):
         value = self._db.get(key)
         if value is None:

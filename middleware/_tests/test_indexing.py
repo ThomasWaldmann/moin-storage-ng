@@ -16,15 +16,15 @@ import pytest
 from config import NAME, SIZE, ITEMID, REVID, DATAID, HASH_ALGORITHM, CONTENT, COMMENT
 
 from middleware.indexing import IndexingMiddleware, AccessDenied
-from backend.storages import MutableBackend
+from backend.stores import MutableBackend
 
-from storage.memory import BytesStorage as MemoryBytesStorage
-from storage.memory import FileStorage as MemoryFileStorage
+from stores.memory import BytesStore as MemoryBytesStore
+from stores.memory import FileStore as MemoryFileStore
 
 class TestIndexingMiddleware(object):
     def setup_method(self, method):
-        meta_store = MemoryBytesStorage()
-        data_store = MemoryFileStorage()
+        meta_store = MemoryBytesStore()
+        data_store = MemoryFileStore()
         self.be = MutableBackend(meta_store, data_store)
         self.be.create()
         self.be.open()
@@ -336,8 +336,8 @@ class TestIndexingMiddleware(object):
 
 class TestProtectedIndexingMiddleware(object):
     def setup_method(self, method):
-        meta_store = MemoryBytesStorage()
-        data_store = MemoryFileStorage()
+        meta_store = MemoryBytesStore()
+        data_store = MemoryFileStore()
         self.be = MutableBackend(meta_store, data_store)
         self.be.create()
         self.be.open()

@@ -3,16 +3,16 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - memory storage tests
+MoinMoin - memory store tests
 """
 
 import pytest
-from storage.memory import BytesStorage, FileStorage
+from stores.memory import BytesStore, FileStore
 
 
-@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
-def test_create(Storage):
-    store = Storage()
+@pytest.mark.multi(Store=[BytesStore, FileStore])
+def test_create(Store):
+    store = Store()
     assert store._st is None
 
     store.create()
@@ -20,9 +20,9 @@ def test_create(Storage):
 
     return store
 
-@pytest.mark.multi(Storage=[BytesStorage, FileStorage])
-def test_destroy(Storage):
-    store = test_create(Storage)
+@pytest.mark.multi(Store=[BytesStore, FileStore])
+def test_destroy(Store):
+    store = test_create(Store)
     store.destroy()
     assert store._st is None
 

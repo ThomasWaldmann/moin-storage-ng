@@ -6,7 +6,7 @@
 """
 MoinMoin - indexing middleware
 
-The backends and storages moin uses are rather simple, it is mostly just a
+The backends and stores moin uses are rather simple, it is mostly just a
 unsorted / unordered bunch of revisions (meta and data) with iteration.
 
 The indexer middleware adds the needed power: after all metadata and data
@@ -57,7 +57,7 @@ def backend_to_index(meta, content, schema, wikiname):
     """
     Convert backend metadata/data to a whoosh document.
 
-    :param meta: revision meta from moin storage
+    :param meta: revision meta from moin backend
     :param content: revision data converted to indexable content
     :param schema: whoosh schema
     :param wikiname: interwikiname of this wiki
@@ -420,9 +420,9 @@ class IndexingMiddleware(object):
             index_latest.close()
         return changed
 
-    def optimize_storage(self):
+    def optimize_backend(self):
         """
-        Optimize storage / collect garbage to safe space:
+        Optimize backend / collect garbage to safe space:
 
         * trash bin: empty it? use trash_max_age?
         * user profiles: only keep latest revision?

@@ -2,7 +2,7 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - sqlite3 key/value storage (optionally with zlib/"gzip" compression)
+MoinMoin - sqlite3 key/value store (optionally with zlib/"gzip" compression)
 """
 
 
@@ -12,19 +12,19 @@ from StringIO import StringIO
 import zlib
 from sqlite3 import *
 
-from storage import MutableStorageBase, BytesMutableStorageBase, FileMutableStorageBase
+from stores import MutableStoreBase, BytesMutableStoreBase, FileMutableStoreBase
 
 
-class _Storage(MutableStorageBase):
+class _Store(MutableStoreBase):
     """
-    A simple sqlite3 based storage.
+    A simple sqlite3 based store.
     """
     def __init__(self, db_name, table_name, compression_level=0):
         """
         Just store the params.
 
         :param db_name: database (file)name
-        :param table_name: table to use for this storage (we only touch this table)
+        :param table_name: table to use for this store (we only touch this table)
         :param compression_level: zlib compression level
                                   0 = no compr, 1 = fast/small, ..., 9 = slow/smaller
                                   we recommend 0 for low cpu usage, 1 for low disk space usage
@@ -77,7 +77,7 @@ class _Storage(MutableStorageBase):
         return value
 
 
-class BytesStorage(_Storage, BytesMutableStorageBase):
+class BytesStore(_Store, BytesMutableStoreBase):
     def __getitem__(self, key):
         rows = list(self.conn.execute("select value from %s where key=?" % self.table_name, (key, )))
         if not rows:
@@ -91,7 +91,7 @@ class BytesStorage(_Storage, BytesMutableStorageBase):
             self.conn.execute('insert into %s values (?, ?)' % self.table_name, (key, buffer(value)))
 
 
-class FileStorage(_Storage, FileMutableStorageBase):
+class FileStore(_Store, FileMutableStoreBase):
     def __getitem__(self, key):
         rows = list(self.conn.execute("select value from %s where key=?" % self.table_name, (key, )))
         if not rows:

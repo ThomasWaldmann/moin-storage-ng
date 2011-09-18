@@ -2,17 +2,17 @@
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
 """
-MoinMoin - storage test magic
+MoinMoin - store test magic
 """
 
 
 from __future__ import absolute_import, division
 
 import pytest
-from storage.wrappers import ByteToStreamWrappingStore
+from stores.wrappers import ByteToStreamWrappingStore
 
 # memcached is not in the loop
-stores = 'fs kc kt memory sqlite sqlite:compressed'.split()
+STORES = 'fs kc kt memory sqlite sqlite:compressed'.split()
 
 
 constructors = {
@@ -31,16 +31,16 @@ def pytest_generate_tests(metafunc):
     argnames = metafunc.funcargnames
     
     if 'store' in argnames:
-        klasses = 'BytesStorage', 'FileStorage'
+        klasses = 'BytesStore', 'FileStore'
     elif 'bst' in argnames:
-        klasses = 'BytesStorage',
+        klasses = 'BytesStore',
     elif 'fst' in argnames:
-        klasses = 'FileStorage',
+        klasses = 'FileStore',
     else:
         klasses = None
 
     if klasses is not None:
-        for storename in stores:
+        for storename in STORES:
             for klass in klasses:
                 metafunc.addcall(
                     id='%s/%s' % (storename, klass),
@@ -49,17 +49,17 @@ def pytest_generate_tests(metafunc):
     multi_mark = getattr(metafunc.function, 'multi', None)
     if multi_mark is not None:
         # XXX: hack
-        storages = multi_mark.kwargs['Storage']
-        for storage in storages:
-            metafunc.addcall(id=storage.__name__, funcargs={
-                'Storage': storage,
+        stores = multi_mark.kwargs['Store']
+        for store in stores:
+            metafunc.addcall(id=store.__name__, funcargs={
+                'Store': store,
             })
 
 
-def make_storage(request):
+def make_store(request):
     tmpdir = request.getfuncargvalue('tmpdir')
     storename, kind = request.param
-    storemodule = pytest.importorskip('storage.' + storename.split(':')[0])
+    storemodule = pytest.importorskip('stores.' + storename.split(':')[0])
     klass = getattr(storemodule, kind)
     construct = constructors.get(storename)
     if construct is None:
@@ -74,17 +74,17 @@ def make_storage(request):
 
 
 def pytest_funcarg__bst(request):
-    return make_storage(request)
+    return make_store(request)
 
 
 def pytest_funcarg__fst(request):
-    return make_storage(request)
+    return make_store(request)
 
 
 def pytest_funcarg__store(request):
-    store = make_storage(request)
+    store = make_store(request)
     storename, kind = request.param
-    if kind == 'FileStorage':
+    if kind == 'FileStore':
         store = ByteToStreamWrappingStore(store)
     return store
 
