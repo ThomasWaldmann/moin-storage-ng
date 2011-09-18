@@ -34,11 +34,24 @@ try:
 except ImportError:
     import simplejson as json
 
+STORES_PACKAGE = 'storage.stores'
+
 
 class Backend(BackendBase):
     """
     ties together a store for metadata and a store for data, readonly
     """
+    @classmethod
+    def from_uri(cls, uri):
+        store_name_uri = uri.split(':', 1)
+        if len(store_name_uri) != 2:
+            raise ValueError("malformed store uri: %s" % uri)
+        store_name, store_uri = store_name_uri
+        module = __import__(STORES_PACKAGE + '.' + store_name, globals(), locals(), ['BytesStore', 'FileStore', ])
+        meta_store_uri = store_uri % dict(kind='meta')
+        data_store_uri = store_uri % dict(kind='data')
+        return cls(module.BytesStore(meta_store_uri), module.FileStore(data_store_uri))
+
     def __init__(self, meta_store, data_store):
         """
         :param meta_store: a ByteStore for metadata

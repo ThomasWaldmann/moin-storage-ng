@@ -28,6 +28,10 @@ class _Store(MutableStoreBase):
     """
     A simple dict-based in-memory store. No persistence!
     """
+    @classmethod
+    def from_uri(cls, uri):
+        return cls([uri])
+
     def __init__(self, servers=['localhost:11211'], debug=0):
         """
         :param servers: list of memcached servers (default: ['localhost:11211'])

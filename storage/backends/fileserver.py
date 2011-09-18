@@ -29,6 +29,10 @@ class Backend(BackendBase):
     """
     exposes part of the filesystem (read-only)
     """
+    @classmethod
+    def from_uri(cls, uri):
+        return cls(uri)
+
     def __init__(self, path):
         """
         :param path: base directory (all files/dirs below will be exposed)

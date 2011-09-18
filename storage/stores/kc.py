@@ -29,6 +29,10 @@ class _Store(MutableStoreBase):
     """
     Kyoto cabinet based store.
     """
+    @classmethod
+    def from_uri(cls, uri):
+        return cls(uri)
+
     def __init__(self, path, mode=DB.OWRITER|DB.OAUTOTRAN, db_opts=DB.GCONCURRENT):
         """
         Store params for .open(). Please refer to kyotocabinet-python-legacy docs for more information.

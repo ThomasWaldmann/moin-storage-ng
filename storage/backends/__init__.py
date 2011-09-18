@@ -18,6 +18,13 @@ class BackendBase(object):
     """
     __metaclass__ = ABCMeta
 
+    @classmethod
+    @abstractmethod
+    def from_uri(cls, uri):
+        """
+        create an instance using the data given in uri
+        """
+
     @abstractmethod
     def open(self):
         """

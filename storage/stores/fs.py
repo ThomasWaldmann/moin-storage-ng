@@ -23,6 +23,10 @@ class _Store(MutableStoreBase):
 
     keys are required to be valid filenames.
     """
+    @classmethod
+    def from_uri(cls, uri):
+        return cls(uri)
+
     def __init__(self, path):
         """
         :param path: base directory used for this store

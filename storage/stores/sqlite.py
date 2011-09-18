@@ -25,7 +25,11 @@ class _Store(MutableStoreBase):
     """
     A simple sqlite3 based store.
     """
-    def __init__(self, db_name, table_name, compression_level=0):
+    @classmethod
+    def from_uri(cls, uri):
+        return cls(uri)
+
+    def __init__(self, db_name, table_name='store', compression_level=0):
         """
         Just store the params.
 

@@ -24,6 +24,10 @@ class _Store(MutableStoreBase):
     """
     Kyoto tycoon based store.
     """
+    @classmethod
+    def from_uri(cls, uri):
+        return cls(uri)
+
     def __init__(self, host='127.0.0.1', port=1978, timeout=30):
         """
         Store params for .open().

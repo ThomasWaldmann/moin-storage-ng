@@ -21,6 +21,13 @@ class StoreBase(Mapping):
     """
     A simple read-only key/value store.
     """
+    @classmethod
+    @abstractmethod
+    def from_uri(cls, uri):
+        """
+        return an instance constructed from the given uri
+        """
+
     def __init__(self, **kw):
         """
         lazy stuff - just remember pathes, urls, database name, ... -

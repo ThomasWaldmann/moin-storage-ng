@@ -21,6 +21,10 @@ class _Store(MutableStoreBase):
     """
     A simple dict-based in-memory store. No persistence!
     """
+    @classmethod
+    def from_uri(cls, uri):
+        return cls()
+
     def __init__(self):
         self._st = None
 
