@@ -11,7 +11,7 @@ from __future__ import absolute_import, division
 from storage.memory import BytesStorage, FileStorage
 
 from middleware.indexing import IndexingMiddleware, AccessDenied
-from middleware.serializer import serialize, deserialize
+from middleware.serialization import serialize, deserialize
 from backend.storages import MutableBackend
 
 

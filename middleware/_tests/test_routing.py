@@ -14,7 +14,7 @@ import pytest
 
 from config import NAME, REVID
 
-from middleware.router import Backend as RouterBackend
+from middleware.routing import Backend as RouterBackend
 from backend.storages import MutableBackend as StorageBackend, Backend as ROBackend
 
 from storage.memory import BytesStorage as MemoryBytesStorage
