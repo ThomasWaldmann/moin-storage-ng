@@ -513,7 +513,7 @@ class IndexingMiddleware(object):
 
     def search(self, q, all_revs=False, **kw):
         """
-        Search with query q, yield stored fields.
+        Search with query q, yield Revisions.
         """
         with self.get_index(all_revs).searcher() as searcher:
             # Note: callers must consume everything we yield, so the for loop
@@ -523,7 +523,7 @@ class IndexingMiddleware(object):
                 latest_doc = not all_revs and doc or None
                 item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
                 if item.allows('read'):
-                    yield doc
+                    yield item[doc[REVID]]
 
     def search_page(self, q, all_revs=False, pagenum=1, pagelen=10, **kw):
         """
@@ -537,44 +537,50 @@ class IndexingMiddleware(object):
                 latest_doc = not all_revs and doc or None
                 item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
                 if item.allows('read'):
-                    yield doc
+                    yield item[doc[REVID]]
 
     def documents(self, all_revs=False, **kw):
         """
-        Yield documents matching the kw args.
+        Yield Revisions matching the kw args.
+        """
+        for doc in self._documents(all_revs, **kw):
+            latest_doc = not all_revs and doc or None
+            item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
+            if item.allows('read'):
+                yield item[doc[REVID]]
+
+    def _documents(self, all_revs=False, **kw):
+        """
+        Yield documents matching the kw args (internal use only, no ACL checks).
         """
         with self.get_index(all_revs).searcher() as searcher:
             # Note: callers must consume everything we yield, so the for loop
             # ends and the "with" is left to close the index files.
             if kw:
                 for doc in searcher.documents(**kw):
-                    latest_doc = not all_revs and doc or None
-                    item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
-                    if item.allows('read'):
-                        yield doc
+                    yield doc
             else: # XXX maybe this would make sense to be whoosh default behaviour for documents()?
                   #     should be implemented for whoosh >= 2.2.3
                 for doc in searcher.all_stored_fields():
-                    latest_doc = not all_revs and doc or None
-                    item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
-                    if item.allows('read'):
-                        yield doc
+                    yield doc
 
-    def document(self, all_revs=False, acl_check=True, **kw):
+    def document(self, all_revs=False, **kw):
         """
-        Return a document matching the kw args.
+        Return a Revision matching the kw args.
+        """
+        doc = self._document(all_revs, **kw)
+        if doc:
+            latest_doc = not all_revs and doc or None
+            item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
+            if item.allows('read'):
+                return item[doc[REVID]]
 
-        :param acl_check: check 'read' ACL if True
+    def _document(self, all_revs=False, **kw):
+        """
+        Return a document matching the kw args (internal use only, no ACL checks).
         """
         with self.get_index(all_revs).searcher() as searcher:
-            doc = searcher.document(**kw)
-            if doc and acl_check:
-                latest_doc = not all_revs and doc or None
-                item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
-                if item.allows('read'):
-                    return doc
-            else:
-                return doc
+            return searcher.document(**kw)
 
     def __getitem__(self, name):
         """
@@ -632,8 +638,8 @@ class Item(object):
         self.user_name = user_name
         self.backend = self.indexer.backend
         if latest_doc is None:
-            # we need to switch off the acl check there to avoid endless recursion:
-            latest_doc = self.indexer.document(all_revs=False, acl_check=False, **query) or {}
+            # we need to call the method without acl check to avoid endless recursion:
+            latest_doc = self.indexer._document(all_revs=False, **query) or {}
         self._current = latest_doc
 
     def _get_itemid(self):
@@ -689,18 +695,20 @@ class Item(object):
 
     def iter_revs(self):
         """
-        Iterate over revids belonging to this item (use index).
+        Iterate over Revisions belonging to this item.
         """
         if self:
-            for doc in self.indexer.documents(all_revs=True, itemid=self.itemid):
-                yield doc[REVID]
+            for rev in self.indexer.documents(all_revs=True, itemid=self.itemid):
+                yield rev
 
     def __getitem__(self, revid):
         """
         Get Revision with revision id <revid>.
         """
         self.require('read')
-        return Revision(self, revid)
+        rev = Revision(self, revid)
+        rev.data # XXX trigger KeyError if rev does not exist
+        return rev
 
     def get_revision(self, revid):
         """
@@ -719,6 +727,7 @@ class Item(object):
         :type meta: dict
         :type data: open file (file must be closed by caller)
         :param overwrite: if True, allow overwriting of existing revs.
+        :returns: a Revision instance of the just created revision
         """
         self.require('write')
         if self.itemid is None:
@@ -736,15 +745,15 @@ class Item(object):
         data.seek(0)  # rewind file
         self.indexer.index_revision(revid, meta, data)
         if not overwrite:
-            self._current = self.indexer.document(all_revs=False, acl_check=False, revid=revid)
+            self._current = self.indexer._document(all_revs=False, revid=revid)
         return Revision(self, revid)
 
     def store_all_revisions(self, meta, data):
         """
         Store over all revisions of this item.
         """
-        for revid in self.iter_revs():
-            meta[REVID] = revid
+        for rev in self.iter_revs():
+            meta[REVID] = rev.revid
             self.store_revision(meta, data, overwrite=True)
 
     def destroy_revision(self, revid):
@@ -759,26 +768,74 @@ class Item(object):
         """
         Destroy all revisions of this item.
         """
-        for revid in self.iter_revs():
-            self.destroy_revision(revid)
+        for rev in self.iter_revs():
+            self.destroy_revision(rev.revid)
 
 
 class Revision(object):
     """
     An existing revision (exists in the backend).
     """
-    def __init__(self, item, revid):
+    def __init__(self, item, revid, doc=None):
         self.item = item
         self.revid = revid
         self.backend = item.backend
-        self.meta, self.data = self.backend.retrieve(self.revid) # raises KeyError if rev does not exist
+        self._doc = doc
+        self.meta = Meta(self, self._doc)
+        self._data = None
+        # Note: this does not immediately raise a KeyError for non-existing revs any more
+        # If you access data or meta, it will, though.
+
+    @property
+    def data(self):
+        if self._data is None:
+            meta, data = self.backend.retrieve(self.revid) # raises KeyError if rev does not exist
+            self.meta = Meta(self, self._doc, meta)
+            self._data = data
+        return self._data
 
     def close(self):
-        self.data.close()
+        if self._data is not None:
+            self._data.close()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         self.close()
+
+    def __cmp__(self, other):
+        return cmp(self.meta, other.meta)
+
+
+class Meta(object):
+    def __init__(self, revision, doc, meta=None):
+        self.revision = revision
+        self._doc = doc or {}
+        self._meta = meta or {}
+
+    def __contains__(self, key):
+        try:
+            self[key]
+        except KeyError:
+            return False
+        else:
+            return True
+
+    def __getitem__(self, key):
+        try:
+            return self._meta[key]
+        except KeyError:
+            pass
+        try:
+            return self._doc[key]
+        except KeyError:
+            pass
+        self._meta, self.revision._data = self.revision.backend.retrieve(self.revision.revid) # raises KeyError if rev does not exist
+        return self._meta[key]
+
+    def __cmp__(self, other):
+        if self[REVID] == other[REVID]:
+            return 0
+        return cmp(self[MTIME], other[MTIME])
 

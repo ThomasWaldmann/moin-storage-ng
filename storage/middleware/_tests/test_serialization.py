@@ -54,7 +54,7 @@ def make_middleware(request):
     backend.open()
     request.addfinalizer(backend.destroy)
     request.addfinalizer(backend.close)
-    
+
     mw = IndexingMiddleware(index_dir=str(tmpdir/'foo'),
                             backend=backend)
     mw.create()

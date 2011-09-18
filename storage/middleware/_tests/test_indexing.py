@@ -56,7 +56,7 @@ class TestIndexingMiddleware(object):
         rev = item.get_revision(revid)
         assert rev.meta[NAME] == item_name
         assert rev.data.read() == data
-        revids = list(item.iter_revs())
+        revids = [rev.revid for rev in item.iter_revs()]
         assert revids == [revid]
 
     def test_overwrite_revision(self):
@@ -74,7 +74,7 @@ class TestIndexingMiddleware(object):
         assert rev.meta[NAME] == item_name
         assert rev.meta[COMMENT] == u'no spam'
         assert rev.data.read() == newdata
-        revids = list(item.iter_revs())
+        revids = [rev.revid for rev in item.iter_revs()]
         assert len(revids) == 1 # we still have the revision, cleared
         assert revid in revids # it is still same revid
 
@@ -94,27 +94,27 @@ class TestIndexingMiddleware(object):
         item = self.imw[item_name]
         with pytest.raises(KeyError):
             item.get_revision(revid0)
-        revs = list(item.iter_revs())
-        print "after destroy revid0", revs
-        assert sorted(revs) == sorted([revid1, revid2])
+        revids = [rev.revid for rev in item.iter_revs()]
+        print "after destroy revid0", revids
+        assert sorted(revids) == sorted([revid1, revid2])
         # destroy a current revision:
         item.destroy_revision(revid2)
         # check if the revision was destroyed:
         item = self.imw[item_name]
         with pytest.raises(KeyError):
             item.get_revision(revid2)
-        revs = list(item.iter_revs())
-        print "after destroy revid2", revs
-        assert sorted(revs) == sorted([revid1])
+        revids = [rev.revid for rev in item.iter_revs()]
+        print "after destroy revid2", revids
+        assert sorted(revids) == sorted([revid1])
         # destroy the last revision left:
         item.destroy_revision(revid1)
         # check if the revision was destroyed:
         item = self.imw[item_name]
         with pytest.raises(KeyError):
             item.get_revision(revid1)
-        revs = list(item.iter_revs())
-        print "after destroy revid1", revs
-        assert sorted(revs) == sorted([])
+        revids = [rev.revid for rev in item.iter_revs()]
+        print "after destroy revid1", revids
+        assert sorted(revids) == sorted([])
 
     def test_destroy_item(self):
         revids = []
@@ -139,7 +139,7 @@ class TestIndexingMiddleware(object):
         item.store_revision(dict(name=item_name), StringIO('1st'))
         item.store_revision(dict(name=item_name), StringIO('2nd'))
         item = self.imw[item_name]
-        revs = [item[revid].data.read() for revid in item.iter_revs()]
+        revs = [rev.data.read() for rev in item.iter_revs()]
         assert len(revs) == 2
         assert set(revs) == set(['1st', '2nd'])
 
@@ -151,16 +151,15 @@ class TestIndexingMiddleware(object):
         item = self.imw[item_name]
         item.store_revision(dict(name=item_name), StringIO('1st'))
         expected_rev = item.store_revision(dict(name=item_name), StringIO('2nd'))
-        docs = list(self.imw.documents(all_revs=False, name=item_name))
-        assert len(docs) == 1  # there is only 1 latest revision
-        assert expected_rev.revid == docs[0][REVID]  # it is really the latest one
+        revs = list(self.imw.documents(all_revs=False, name=item_name))
+        assert len(revs) == 1  # there is only 1 latest revision
+        assert expected_rev.revid == revs[0].revid  # it is really the latest one
 
     def test_auto_meta(self):
         item_name = u'foo'
         data = 'bar'
         item = self.imw[item_name]
         rev = item.store_revision(dict(name=item_name), StringIO(data))
-        rev = item[rev.revid]
         print repr(rev.meta)
         assert rev.meta[NAME] == item_name
         assert rev.meta[SIZE] == len(data)
@@ -175,12 +174,12 @@ class TestIndexingMiddleware(object):
         rev1 = item.store_revision(dict(name=item_name), StringIO('x'))
         rev2 = item.store_revision(dict(name=item_name), StringIO('xx'))
         rev3 = item.store_revision(dict(name=item_name), StringIO('xxx'))
-        doc = self.imw.document(all_revs=True, size=2)
-        assert doc
-        assert doc[REVID] == rev2.revid
-        docs = list(self.imw.documents(all_revs=True, size=2))
-        assert len(docs) == 1
-        assert docs[0][REVID] == rev2.revid
+        rev = self.imw.document(all_revs=True, size=2)
+        assert rev
+        assert rev.revid == rev2.revid
+        revs = list(self.imw.documents(all_revs=True, size=2))
+        assert len(revs) == 1
+        assert revs[0].revid == rev2.revid
 
     def test_index_rebuild(self):
         # first we index some stuff the slow "on-the-fly" way:
@@ -196,8 +195,8 @@ class TestIndexingMiddleware(object):
         expected_latest_revids.append(r.revid)
 
         # now we remember the index contents built that way:
-        expected_latest_docs = list(self.imw.documents(all_revs=False))
-        expected_all_docs = list(self.imw.documents(all_revs=True))
+        expected_latest_revs = list(self.imw.documents(all_revs=False))
+        expected_all_revs = list(self.imw.documents(all_revs=True))
 
         print "*** all on-the-fly:"
         self.imw.dump(all_revs=True)
@@ -212,9 +211,9 @@ class TestIndexingMiddleware(object):
         self.imw.open()
 
         # read the index contents built that way:
-        all_docs = list(self.imw.documents(all_revs=True))
-        latest_docs = list(self.imw.documents(all_revs=False))
-        latest_revids = [doc[REVID] for doc in latest_docs]
+        all_revs = list(self.imw.documents(all_revs=True))
+        latest_revs = list(self.imw.documents(all_revs=False))
+        latest_revids = [rev.revid for rev in latest_revs]
 
         print "*** all rebuilt:"
         self.imw.dump(all_revs=True)
@@ -222,8 +221,8 @@ class TestIndexingMiddleware(object):
         self.imw.dump(all_revs=False)
 
         # should be all the same, order does not matter:
-        assert sorted(expected_all_docs) == sorted(all_docs)
-        assert sorted(expected_latest_docs) == sorted(latest_docs)
+        assert sorted(expected_all_revs) == sorted(all_revs)
+        assert sorted(expected_latest_revs) == sorted(latest_revs)
         assert sorted(latest_revids) == sorted(expected_latest_revids)
 
     def test_index_update(self):
@@ -279,8 +278,8 @@ class TestIndexingMiddleware(object):
         self.imw.open()
 
         # read the index contents we have now:
-        all_revids = [doc[REVID] for doc in self.imw.documents(all_revs=True)]
-        latest_revids = [doc[REVID] for doc in self.imw.documents(all_revs=False)]
+        all_revids = [doc[REVID] for doc in self.imw._documents(all_revs=True)]
+        latest_revids = [doc[REVID] for doc in self.imw._documents(all_revs=False)]
 
         # this index is outdated:
         for missing_revid in missing_revids:
@@ -293,8 +292,8 @@ class TestIndexingMiddleware(object):
         self.imw.open()
 
         # read the index contents we have now:
-        all_revids = [doc[REVID] for doc in self.imw.documents(all_revs=True)]
-        latest_revids = [doc[REVID] for doc in self.imw.documents(all_revs=False)]
+        all_revids = [rev.revid for rev in self.imw.documents(all_revs=True)]
+        latest_revids = [rev.revid for rev in self.imw.documents(all_revs=False)]
 
         # now it should have the previously missing rev and all should be as expected:
         for missing_revid in missing_revids:
@@ -320,6 +319,7 @@ class TestIndexingMiddleware(object):
         with pytest.raises(ValueError):
             rev.data.read()
 
+
     def test_indexed_content(self):
         # TODO: this is a very simple check that assumes that data is put 1:1
         # into index' CONTENT field.
@@ -330,10 +330,9 @@ class TestIndexingMiddleware(object):
         data_file = StringIO(data)
         with item.store_revision(meta, data_file) as rev:
             expected_revid = rev.revid
-        doc = self.imw.document(content=u'test')
+        doc = self.imw._document(content=u'test')
         assert expected_revid == doc[REVID]
         assert unicode(data) == doc[CONTENT]
-
 
 class TestProtectedIndexingMiddleware(object):
     def setup_method(self, method):
@@ -362,7 +361,7 @@ class TestProtectedIndexingMiddleware(object):
         item = self.imw[item_name]
         r = item.store_revision(dict(name=item_name, acl=u''), StringIO('secret content'))
         revid_secret = r.revid
-        revids = [doc[REVID] for doc in self.imw.documents(all_revs=False)]
+        revids = [rev.revid for rev in self.imw.documents(all_revs=False)]
         assert revids == [revid_public]
 
     def test_getitem(self):
@@ -402,8 +401,8 @@ class TestProtectedIndexingMiddleware(object):
         item = self.imw[item_name]
         for i in xrange(100):
             item.store_revision(dict(name=item_name, acl=u'joe:create joe:read'), StringIO('rev number %d' % i))
-        for revid in item.iter_revs():
-            r = item[revid]
+        for r in item.iter_revs():
             #print r.meta
             #print r.data.read()
+            pass
 
