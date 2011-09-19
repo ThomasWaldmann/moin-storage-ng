@@ -10,7 +10,7 @@ from __future__ import absolute_import, division
 
 from StringIO import StringIO
 
-from ..indexing import IndexingMiddleware, AccessDenied
+from ..indexing import IndexingMiddleware
 from ..serialization import serialize, deserialize
 
 from storage.backends.stores import MutableBackend

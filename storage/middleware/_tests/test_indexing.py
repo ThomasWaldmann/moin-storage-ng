@@ -15,7 +15,7 @@ import pytest
 
 from config import NAME, SIZE, ITEMID, REVID, DATAID, HASH_ALGORITHM, CONTENT, COMMENT
 
-from ..indexing import IndexingMiddleware, AccessDenied
+from ..indexing import IndexingMiddleware
 
 from storage.backends.stores import MutableBackend
 from storage.stores.memory import BytesStore as MemoryBytesStore
@@ -357,10 +357,6 @@ class TestProtectedIndexingMiddleware(object):
         item = self.imw[item_name]
         r = item.store_revision(dict(name=item_name, acl=u'joe:read'), StringIO('public content'))
         revid_public = r.revid
-        item_name = u'secret'
-        item = self.imw[item_name]
-        r = item.store_revision(dict(name=item_name, acl=u''), StringIO('secret content'))
-        revid_secret = r.revid
         revids = [rev.revid for rev in self.imw.documents(all_revs=False)]
         assert revids == [revid_public]
 
@@ -369,19 +365,11 @@ class TestProtectedIndexingMiddleware(object):
         item = self.imw[item_name]
         r = item.store_revision(dict(name=item_name, acl=u'joe:read'), StringIO('public content'))
         revid_public = r.revid
-        item_name = u'secret'
-        item = self.imw[item_name]
-        r = item.store_revision(dict(name=item_name, acl=u'boss:read'), StringIO('secret content'))
-        revid_secret = r.revid
         # now testing:
         item_name = u'public'
         item = self.imw[item_name]
         r = item[revid_public]
         assert r.data.read() == 'public content'
-        item_name = u'secret'
-        item = self.imw[item_name]
-        with pytest.raises(AccessDenied):
-            r = item[revid_secret]
 
     def test_perf_create_only(self):
         pytest.skip("usually we do no performance tests")

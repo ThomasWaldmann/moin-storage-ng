@@ -16,9 +16,6 @@ is indexed, we can do all sorts of operations on the indexer level:
 * selecting
 * listing
 
-We also check ACLs here. Index has ALL content, so we must be careful not
-to show data from index to a user that is not allowed to read that data.
-
 Using Whoosh (a fast pure-Python indexing and search library), we build,
 maintain and use 2 indexes:
 
@@ -49,10 +46,6 @@ The layers below are using UUIDs to identify revisions meta and data:
 Many methods provided by the indexing middleware will be fast, because they
 will not access the layers below (like the backend), but just the index files,
 usually it is even just the small and thus quick latest-revs index.
-
-Indexing Middleware also checks ACLs, so a user will not see items in search
-results that he is not allowed to read. Also, trying to access a revision
-without read permission will give an AccessDenied exception.
 """
 
 
@@ -522,8 +515,7 @@ class IndexingMiddleware(object):
                 doc = hit.fields()
                 latest_doc = not all_revs and doc or None
                 item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
-                if item.allows('read'):
-                    yield item[doc[REVID]]
+                yield item[doc[REVID]]
 
     def search_page(self, q, all_revs=False, pagenum=1, pagelen=10, **kw):
         """
@@ -536,8 +528,7 @@ class IndexingMiddleware(object):
                 doc = hit.fields()
                 latest_doc = not all_revs and doc or None
                 item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
-                if item.allows('read'):
-                    yield item[doc[REVID]]
+                yield item[doc[REVID]]
 
     def documents(self, all_revs=False, **kw):
         """
@@ -546,12 +537,11 @@ class IndexingMiddleware(object):
         for doc in self._documents(all_revs, **kw):
             latest_doc = not all_revs and doc or None
             item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
-            if item.allows('read'):
-                yield item[doc[REVID]]
+            yield item[doc[REVID]]
 
     def _documents(self, all_revs=False, **kw):
         """
-        Yield documents matching the kw args (internal use only, no ACL checks).
+        Yield documents matching the kw args (internal use only).
         """
         with self.get_index(all_revs).searcher() as searcher:
             # Note: callers must consume everything we yield, so the for loop
@@ -572,12 +562,11 @@ class IndexingMiddleware(object):
         if doc:
             latest_doc = not all_revs and doc or None
             item = Item(self, user_name=self.user_name, latest_doc=latest_doc, itemid=doc[ITEMID])
-            if item.allows('read'):
-                return item[doc[REVID]]
+            return item[doc[REVID]]
 
     def _document(self, all_revs=False, **kw):
         """
-        Return a document matching the kw args (internal use only, no ACL checks).
+        Return a document matching the kw args (internal use only).
         """
         with self.get_index(all_revs).searcher() as searcher:
             return searcher.document(**kw)
@@ -616,12 +605,6 @@ class IndexingMiddleware(object):
         return Item.existing(self, user_name=self.user_name, **query)
 
 
-class AccessDenied(Exception):
-    """
-    raised when a user is denied access to an Item or Revision by ACL.
-    """
-
-
 class Item(object):
     def __init__(self, indexer, user_name=None, latest_doc=None, **query):
         """
@@ -647,6 +630,10 @@ class Item(object):
     def _set_itemid(self, value):
         self._current[ITEMID] = value
     itemid = property(_get_itemid, _set_itemid)
+
+    @property
+    def acl(self):
+        return self._current.get(ACL)
 
     @classmethod
     def create(cls, indexer, user_name=None, **query):
@@ -674,25 +661,6 @@ class Item(object):
         """
         return self.itemid is not None
 
-    def allows(self, capability):
-        # TODO: this is just a temporary hack to be able to test this without real ACL code,
-        # replace it by a sane one later.
-        # e.g. acl = "joe:read"  --> user joe may read
-        if not self.indexer.acl_support:
-            return True
-        acl = self._current.get(ACL)
-        user_name = self.user_name
-        if acl is None or user_name is None:
-            allow = True
-        else:
-            allow = "%s:%s" % (user_name, capability) in acl
-        #print "item allows user '%s' to '%s' (acl: %s): %s" % (user_name, capability, acl, ["no", "yes"][allow])
-        return allow
-
-    def require(self, capability):
-        if not self.allows(capability):
-            raise AccessDenied("item does not allow user '%r' to '%r'" % (self.user_name, capability))
-
     def iter_revs(self):
         """
         Iterate over Revisions belonging to this item.
@@ -705,7 +673,6 @@ class Item(object):
         """
         Get Revision with revision id <revid>.
         """
-        self.require('read')
         rev = Revision(self, revid)
         rev.data # XXX trigger KeyError if rev does not exist
         return rev
@@ -729,17 +696,13 @@ class Item(object):
         :param overwrite: if True, allow overwriting of existing revs.
         :returns: a Revision instance of the just created revision
         """
-        self.require('write')
         if self.itemid is None:
-            self.require('create')
             self.itemid = make_uuid()
         backend = self.backend
-        if overwrite:
-            self.require('overwrite')
-        else:
+        if not overwrite:
             revid = meta.get(REVID)
             if revid is not None and revid in backend:
-                raise AccessDenied('need overwrite flag to overwrite existing revisions')
+                raise ValueError('need overwrite=True to overwrite existing revisions')
         meta[ITEMID] = self.itemid
         revid = backend.store(meta, data)
         data.seek(0)  # rewind file
@@ -760,7 +723,6 @@ class Item(object):
         """
         Destroy revision <revid>.
         """
-        self.require('destroy')
         self.backend.remove(revid)
         self.indexer.remove_revision(revid)
 
