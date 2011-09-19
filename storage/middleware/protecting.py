@@ -85,11 +85,9 @@ class ProtectedItem(object):
         self.protector = protector
         self.item = item
 
-    def _get_itemid(self):
+    @property
+    def itemid(self):
         return self.item.itemid
-    def _set_itemid(self, value):
-        self.item.itemid = value
-    itemid = property(_get_itemid, _set_itemid)
 
     def __nonzero__(self):
         return bool(self.item)
