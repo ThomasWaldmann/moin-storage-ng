@@ -115,6 +115,7 @@ class ProtectedItem(object):
             raise AccessDenied("item does not allow user '%r' to '%r'" % (self.protector.user_name, capability))
 
     def iter_revs(self):
+        self.require('read')
         if self:
             for rev in self.item.iter_revs():
                 yield ProtectedRevision(self.protector, rev, p_item=self)
