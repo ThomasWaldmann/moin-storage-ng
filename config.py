@@ -7,6 +7,7 @@ ACL_RIGHTS_FUNCTIONS = [SUPERUSER, NOTEXTCHA, ]
 CREATE = 'create'
 READ = 'read'
 WRITE = 'write'
+OVERWRITE = 'overwrite'
 DESTROY = 'destroy'
 ADMIN = 'admin'
 # rights that control access to operations on contents

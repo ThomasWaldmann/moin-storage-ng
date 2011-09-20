@@ -16,7 +16,7 @@ from __future__ import absolute_import, division
 
 import logging
 
-from config import ACL
+from config import ACL, CREATE, READ, WRITE, OVERWRITE, DESTROY, ADMIN
 
 
 class AccessDenied(Exception):
@@ -37,26 +37,26 @@ class ProtectingMiddleware(object):
     def search(self, q, all_revs=False, **kw):
         for rev in self.indexer.search(q, all_revs, **kw):
             rev = ProtectedRevision(self, rev)
-            if rev.allows('read'):
+            if rev.allows(READ):
                 yield rev
 
     def search_page(self, q, all_revs=False, pagenum=1, pagelen=10, **kw):
         for rev in self.indexer.search_page(q, all_revs, pagenum, pagelen, **kw):
             rev = ProtectedRevision(self, rev)
-            if rev.allows('read'):
+            if rev.allows(READ):
                 yield rev
 
     def documents(self, all_revs=False, **kw):
         for rev in self.indexer.documents(all_revs, **kw):
             rev = ProtectedRevision(self, rev)
-            if rev.allows('read'):
+            if rev.allows(READ):
                 yield rev
 
     def document(self, all_revs=False, **kw):
         rev = self.indexer.document(all_revs, **kw)
         if rev:
             rev = ProtectedRevision(self, rev)
-            if rev.allows('read'):
+            if rev.allows(READ):
                 return rev
 
     def __getitem__(self, name):
@@ -113,13 +113,13 @@ class ProtectedItem(object):
             raise AccessDenied("item does not allow user '%r' to '%r'" % (self.protector.user_name, capability))
 
     def iter_revs(self):
-        self.require('read')
+        self.require(READ)
         if self:
             for rev in self.item.iter_revs():
                 yield ProtectedRevision(self.protector, rev, p_item=self)
 
     def __getitem__(self, revid):
-        self.require('read')
+        self.require(READ)
         rev = self.item[revid]
         return ProtectedRevision(self.protector, rev, p_item=self)
 
@@ -127,20 +127,20 @@ class ProtectedItem(object):
         return self[revid]
 
     def store_revision(self, meta, data, overwrite=False):
-        self.require('write')
+        self.require(WRITE)
         if not self:
-            self.require('create')
+            self.require(CREATE)
         if overwrite:
-            self.require('overwrite')
+            self.require(OVERWRITE)
         rev = self.item.store_revision(meta, data, overwrite=overwrite)
         return ProtectedRevision(self.protector, rev, p_item=self)
 
     def store_all_revisions(self, meta, data):
-        self.require('overwrite')
+        self.require(OVERWRITE)
         self.item.store_all_revisions(meta, data)
 
     def destroy_revision(self, revid):
-        self.require('destroy')
+        self.require(DESTROY)
         self.item.destroy_revision(revid)
 
     def destroy_all_revisions(self):
@@ -173,12 +173,12 @@ class ProtectedRevision(object):
 
     @property
     def meta(self):
-        self.require('read')
+        self.require(READ)
         return self.rev.meta
 
     @property
     def data(self):
-        self.require('read')
+        self.require(READ)
         return self.rev.data
 
     def close(self):
