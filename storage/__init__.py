@@ -22,7 +22,7 @@ We use a layered approach like this::
 """
 
 
-CONTENT, USERPROFILES, TRASH = 'content', 'userprofiles', 'trash'
+CONTENT, USERPROFILES = 'content', 'userprofiles'
 
 BACKENDS_PACKAGE = 'storage.backends'
 
@@ -49,7 +49,7 @@ def create_mapping(uri, mounts_acls):
 
 
 def create_simple_mapping(uri='stores:fs:instance',
-                          content_acl=None, user_profile_acl=None, trash_acl=None):
+                          content_acl=None, user_profile_acl=None):
     """
     When configuring storage, the admin needs to provide a namespace_mapping.
     To ease creation of such a mapping, this function provides sane defaults
@@ -60,7 +60,7 @@ def create_simple_mapping(uri='stores:fs:instance',
     :params uri: '<backend_name>:<backend_uri>' (general form)
                  backend_name must be a backend module name (e.g. stores)
                  the backend_uri must have a %(nsname)s placeholder, it gets replaced
-                 by the CONTENT, USERPROFILES, TRASH strings and result is given to
+                 by the CONTENT, USERPROFILES strings and result is given to
                  to that backend's constructor
 
                  for the 'stores' backend, backend_uri looks like '<store_name>:<store_uri>'
@@ -78,11 +78,8 @@ def create_simple_mapping(uri='stores:fs:instance',
         content_acl = dict(before=u'', default=u'All:read,write,create', after=u'', hierarchic=False)
     if not user_profile_acl:
         user_profile_acl = dict(before=u'All:', default=u'', after=u'', hierarchic=False)
-    if not trash_acl:
-        trash_acl = content_acl
     mounts_acls = {
         CONTENT: ('', content_acl),
-        TRASH: ('Trash', trash_acl),
         USERPROFILES: ('UserProfile', user_profile_acl),
     }
     return create_mapping(uri, mounts_acls)
