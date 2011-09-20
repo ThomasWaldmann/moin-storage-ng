@@ -1,3 +1,17 @@
+# ACL rights that are valid in moin2
+SUPERUSER = 'superuser'
+NOTEXTCHA = 'notextcha'
+# rights that control access to specific functionality
+ACL_RIGHTS_FUNCTIONS = [SUPERUSER, NOTEXTCHA, ]
+
+CREATE = 'create'
+READ = 'read'
+WRITE = 'write'
+DESTROY = 'destroy'
+ADMIN = 'admin'
+# rights that control access to operations on contents
+ACL_RIGHTS_CONTENTS = [READ, WRITE, CREATE, ADMIN, DESTROY, ]
+
 # metadata keys
 NAME = "name"
 NAME_OLD = "name_old"
